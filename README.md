@@ -13,6 +13,7 @@ Home Assistant Add-on-Repository mit dem **Urlaubsplaner**: Urlaubszeiträume be
 - Entitäten **`Urlaub heute`** und **`Urlaub morgen`** (ein/aus) plus **`Nächster Urlaub`** mit allen Details als Attribute
 - **Dashboard-Karte** ([Urlaubsplaner Card](https://github.com/Melle79/HA-urlaubsplaner-card)): Urlaube direkt im Lovelace-Dashboard eintragen, bearbeiten und löschen
 - Entitäten via **MQTT Discovery** (retained) mit Availability-Topic – die MQTT-Zugangsdaten holt sich das Add-on automatisch vom Supervisor
+- **Optionale Helfer-Entität**: eine bestehende Entität (z. B. `input_boolean.urlaub`) wird automatisch synchron zu „Urlaub heute“ geschaltet – praktisch, wenn schon ein Urlaubshelfer in Automationen verwendet wird
 - Zustände werden bei jeder Änderung sowie automatisch beim **Datumswechsel um Mitternacht** neu berechnet
 - Keine externe API, keine Cloud – alle Daten liegen lokal in `/data` des Add-ons
 

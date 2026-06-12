@@ -25,6 +25,17 @@
 
 Die Zustände werden bei jeder Änderung sowie automatisch beim Datumswechsel um Mitternacht neu berechnet.
 
+## Helfer-Entität schalten (optional)
+
+Unter **Einstellungen** in der Web-UI kann eine bestehende Entität (z. B. `input_boolean.urlaub`)
+eingetragen werden. Das Add-on schaltet sie dann automatisch synchron zu `binary_sensor.urlaub_heute`:
+**ein** am ersten Urlaubstag, **aus** nach dem letzten – auch beim Datumswechsel um Mitternacht.
+
+Damit lässt sich ein bereits vorhandener, bisher manuell geschalteter Urlaubshelfer direkt
+weiterverwenden, ohne bestehende Automationen anzupassen. Hinweis: Solange eine Entität eingetragen
+ist, „gehört“ sie dem Add-on – manuelles Umschalten wird bei der nächsten Synchronisierung
+(Änderung oder Mitternacht) wieder überschrieben. Feld leeren deaktiviert die Funktion.
+
 ## Dashboard-Karte
 
 Die [Urlaubsplaner Card](https://github.com/Melle79/HA-urlaubsplaner-card) (HACS, Typ Dashboard) zeigt

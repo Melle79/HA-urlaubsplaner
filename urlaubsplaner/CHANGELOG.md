@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+
+- Optionale Helfer-Entität: eine bestehende Entität (z. B. `input_boolean.urlaub`) wird automatisch
+  synchron zu „Urlaub heute" geschaltet – ein am ersten Urlaubstag, aus nach dem letzten
+- Neues Einstellungs-Panel in der Web-UI
+- Add-on benötigt dafür Zugriff auf die Home-Assistant-API (`homeassistant_api: true`)
+
 ## 1.0.0
 
 - Erste Version

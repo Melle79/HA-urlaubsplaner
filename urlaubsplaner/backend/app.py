@@ -9,6 +9,7 @@ from datetime import date
 
 from flask import Flask, jsonify, request, send_from_directory
 
+import ha_api
 import logic
 import store
 from mqtt_publisher import Publisher, entity_list
@@ -28,13 +29,23 @@ _publish_lock = threading.Lock()
 # ---------------------------------------------------------------- Publizieren
 
 def publish_now() -> None:
-    """Zustände berechnen und (falls verbunden) via MQTT publizieren."""
-    if publisher is None:
-        return
+    """Zustände berechnen, via MQTT publizieren und Helfer-Entität schalten."""
     with _publish_lock:
         urlaube = store.load_urlaube()
-        publisher.publish_discovery()
-        publisher.publish_states(logic.build_states(urlaube))
+        states = logic.build_states(urlaube)
+        if publisher is not None:
+            publisher.publish_discovery()
+            publisher.publish_states(states)
+        _sync_helper(states)
+
+
+def _sync_helper(states: dict) -> None:
+    """Optionale Helfer-Entität (z. B. input_boolean) an „Urlaub heute" angleichen."""
+    entity = store.load_settings().get("helper_entity", "")
+    if not entity:
+        return
+    on = states["urlaub_heute"]["state"] == "ON"
+    ha_api.set_onoff(entity, on)
 
 
 # ---------------------------------------------------------------- MQTT-Commands
@@ -104,10 +115,31 @@ def api_status():
         {
             "version": VERSION,
             "mqtt_connected": bool(publisher and publisher.connected.is_set()),
+            "ha_api": ha_api.available(),
             "anzahl": len(store.load_urlaube()),
             "entities": entity_list(),
         }
     )
+
+
+@app.route("/api/settings", methods=["GET"])
+def api_get_settings():
+    return jsonify(store.load_settings())
+
+
+@app.route("/api/settings", methods=["PUT"])
+def api_put_settings():
+    data = request.get_json(silent=True) or {}
+    try:
+        settings = store.save_settings(data)
+    except store.ValidationError as err:
+        return jsonify({"error": str(err)}), 400
+    if settings["helper_entity"] and ha_api.get_state(settings["helper_entity"]) is None:
+        # Speichern trotzdem, aber Hinweis zurückgeben
+        publish_now()
+        return jsonify({**settings, "warning": "Entität wurde in HA nicht gefunden"})
+    publish_now()
+    return jsonify(settings)
 
 
 @app.route("/api/urlaube", methods=["GET"])
@@ -167,6 +199,7 @@ def main() -> None:
     else:
         _LOGGER.warning("MQTT_HOST nicht gesetzt – es werden keine Entitäten angelegt")
 
+    threading.Thread(target=publish_now, daemon=True).start()
     threading.Thread(target=_scheduler, daemon=True).start()
 
     port = int(os.environ.get("PORT", "8099"))

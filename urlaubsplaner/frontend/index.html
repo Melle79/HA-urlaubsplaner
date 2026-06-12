@@ -53,6 +53,9 @@
   button.ghost:hover{color:var(--text); border-color:var(--muted); filter:none}
   button.ghost.danger:hover{color:var(--danger); border-color:var(--danger)}
   .form-msg{margin-top:10px; font-size:.85rem; color:var(--danger); min-height:1.2em}
+  .form-msg.ok{color:var(--urlaub)}
+  .hint{font-size:.82rem; color:var(--muted); margin-top:4px}
+  .hint code{font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:.95em}
 
   .cards{display:flex; flex-direction:column; gap:12px}
   .ucard{
@@ -111,6 +114,19 @@
     <details class="entbox"><summary>Entitäten (Klick = kopieren)</summary>
       <div class="entlist" id="entlist"></div>
     </details>
+  </section>
+
+  <section class="panel">
+    <h2>Einstellungen</h2>
+    <div class="form-grid">
+      <div class="field"><label for="s-helper">Helfer-Entität schalten (optional)</label>
+        <input type="text" id="s-helper" placeholder="z. B. input_boolean.urlaub"></div>
+      <button id="s-save">Speichern</button>
+    </div>
+    <div class="form-msg" id="s-msg"></div>
+    <div class="hint">Wird eine Entity-ID eingetragen, schaltet das Add-on diese Entität automatisch
+      synchron zu <code>binary_sensor.urlaub_heute</code>: <b>ein</b> am ersten Urlaubstag,
+      <b>aus</b> nach dem letzten – auch beim Datumswechsel um Mitternacht. Feld leeren = Funktion aus.</div>
   </section>
 </main>
 <script>
@@ -230,6 +246,31 @@ $("f-save").onclick = async () => {
 function refresh(){ loadStatus(); loadList(); }
 refresh();
 setInterval(loadStatus, 30000);
+
+// ---------- Einstellungen ----------
+async function loadSettings(){
+  try{
+    const s = await (await fetch("api/settings")).json();
+    $("s-helper").value = s.helper_entity || "";
+  }catch(e){}
+}
+$("s-save").onclick = async () => {
+  $("s-save").disabled = true;
+  const msg = $("s-msg"); msg.className = "form-msg"; msg.textContent = "";
+  try{
+    const resp = await fetch("api/settings", {
+      method: "PUT",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({helper_entity: $("s-helper").value.trim()}),
+    });
+    const data = await resp.json().catch(()=>({}));
+    if (!resp.ok){ msg.textContent = data.error || "Speichern fehlgeschlagen."; return; }
+    if (data.warning){ msg.textContent = "Gespeichert – aber: " + data.warning + "."; return; }
+    msg.className = "form-msg ok";
+    msg.textContent = data.helper_entity ? "Gespeichert – Entität wird ab jetzt mitgeschaltet." : "Gespeichert – Funktion deaktiviert.";
+  } finally { $("s-save").disabled = false; }
+};
+loadSettings();
 </script>
 </body>
 </html>

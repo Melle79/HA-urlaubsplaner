@@ -1,5 +1,5 @@
 name: "Urlaubsplaner"
-version: "1.0.0"
+version: "1.1.0"
 slug: "urlaubsplaner"
 description: "Urlaubszeiträume verwalten – Entitäten 'Urlaub heute' und 'Urlaub morgen' via MQTT, Web-UI mit Kalender"
 url: "https://github.com/Melle79/HA-urlaubsplaner"
@@ -12,6 +12,7 @@ ingress: true
 ingress_port: 8099
 panel_icon: "mdi:beach"
 panel_title: "Urlaub"
+homeassistant_api: true
 services:
   - "mqtt:need"
 options: {}

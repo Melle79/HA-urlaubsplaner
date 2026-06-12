@@ -83,3 +83,38 @@ def delete_urlaub(urlaub_id: str) -> dict | None:
             urlaube = [u for u in urlaube if u.get("id") != urlaub_id]
             _save(urlaube)
         return removed
+
+
+# ---------------------------------------------------------------- Einstellungen
+
+import re as _re
+
+SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
+DEFAULT_SETTINGS = {"helper_entity": ""}
+_ENTITY_RE = _re.compile(r"^[a-z_]+\.[a-z0-9_]+$")
+
+
+def load_settings() -> dict:
+    with _lock:
+        settings = dict(DEFAULT_SETTINGS)
+        if os.path.exists(SETTINGS_FILE):
+            try:
+                with open(SETTINGS_FILE, encoding="utf-8") as f:
+                    settings.update(json.load(f))
+            except (json.JSONDecodeError, OSError):
+                pass
+        return settings
+
+
+def save_settings(settings: dict) -> dict:
+    helper = str(settings.get("helper_entity", "")).strip().lower()
+    if helper and not _ENTITY_RE.match(helper):
+        raise ValidationError("Ungültige Entity-ID (erwartet z. B. input_boolean.urlaub)")
+    merged = {"helper_entity": helper}
+    with _lock:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        tmp = SETTINGS_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(merged, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, SETTINGS_FILE)
+    return merged
