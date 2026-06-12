@@ -95,3 +95,38 @@ def select_option(entity_id: str, option: str) -> bool:
     except Exception as err:  # noqa: BLE001
         _LOGGER.warning("Option für %s konnte nicht gesetzt werden: %s", entity_id, err)
         return False
+
+
+# Domains, die sich sinnvoll per homeassistant.turn_on/turn_off schalten lassen
+ONOFF_DOMAINS = ("input_boolean", "switch", "light", "fan", "automation", "script", "climate")
+SELECT_DOMAINS = ("input_select", "select")
+
+
+def list_entities() -> list[dict]:
+    """Schaltbare Entitäten und Selects (mit Optionen) aus HA laden."""
+    if not available():
+        return []
+    try:
+        states = _request("GET", "/states")
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Entitätenliste konnte nicht geladen werden: %s", err)
+        return []
+    out = []
+    for s in states if isinstance(states, list) else []:
+        eid = s.get("entity_id", "")
+        domain = eid.split(".", 1)[0]
+        attrs = s.get("attributes", {}) or {}
+        if domain in SELECT_DOMAINS:
+            out.append({
+                "entity_id": eid,
+                "name": attrs.get("friendly_name", eid),
+                "options": list(attrs.get("options", []) or []),
+            })
+        elif domain in ONOFF_DOMAINS:
+            out.append({
+                "entity_id": eid,
+                "name": attrs.get("friendly_name", eid),
+                "options": None,
+            })
+    out.sort(key=lambda e: e["entity_id"])
+    return out

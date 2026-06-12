@@ -30,13 +30,16 @@ Die Zustände werden bei jeder Änderung sowie automatisch beim Datumswechsel um
 Unter **Mitgeschaltete Entitäten** in der Web-UI können beliebig viele Regeln angelegt werden.
 Jede Regel besteht aus:
 
-- **Entity-ID** – z. B. `input_boolean.urlaub`, `switch.warmwasser` oder `input_select.hausmodus`
+- **Entität** – durchsuchbare Auswahl aller schaltbaren Entitäten (input_boolean, switch, light,
+  fan, automation, script, climate) sowie `input_select`/`select`; alternativ kann die Entity-ID
+  weiterhin frei eingetippt werden
 - **Wann** – Auslöser `Urlaub heute` oder `Urlaub morgen` (z. B. um die Anwesenheitssimulation
   schon am Vortag scharf zu schalten)
 - **Aktion** – `Im Urlaub einschalten`, `Im Urlaub ausschalten` (invertiert, z. B. für eine
   Zirkulationspumpe) oder `Option setzen` für `input_select`/`select`-Entitäten:
-  Option im Urlaub plus optional eine Option für danach (ohne „danach“-Option wird nach dem
-  Urlaub nichts zurückgesetzt)
+  Option im Urlaub plus optional eine Option für danach – die verfügbaren Optionen werden
+  automatisch aus Home Assistant geladen und als Dropdown angeboten („nicht zurücksetzen“
+  lässt die Entität nach dem Urlaub unverändert)
 
 Geschaltet wird bei jeder Änderung, beim Add-on-Start und beim Datumswechsel um Mitternacht –
 und nur, wenn der Zustand tatsächlich abweicht. Hinweis: Solange eine Regel besteht, „gehört“

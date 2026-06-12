@@ -120,8 +120,9 @@
     <h2>Mitgeschaltete Entitäten</h2>
     <div class="cards" id="hlist"><div class="empty">Lade…</div></div>
     <div class="form-grid" style="margin-top:14px">
-      <div class="field"><label for="h-entity">Entity-ID</label>
-        <input type="text" id="h-entity" placeholder="z. B. input_boolean.urlaub"></div>
+      <div class="field"><label for="h-entity">Entität (suchen oder Entity-ID eingeben)</label>
+        <input type="text" id="h-entity" list="h-entity-list" placeholder="z. B. Urlaub oder input_boolean.urlaub">
+        <datalist id="h-entity-list"></datalist></div>
       <div class="field" style="flex:0 1 170px"><label for="h-trigger">Wann</label>
         <select id="h-trigger">
           <option value="heute">Urlaub heute</option>
@@ -134,9 +135,9 @@
           <option value="option">Option setzen (input_select)</option>
         </select></div>
       <div class="field optfield" hidden><label for="h-opt-u">Option im Urlaub</label>
-        <input type="text" id="h-opt-u" placeholder="z. B. Urlaub"></div>
+        <span id="h-opt-u-wrap"><input type="text" id="h-opt-u" placeholder="z. B. Urlaub"></span></div>
       <div class="field optfield" hidden><label for="h-opt-n">Option danach (optional)</label>
-        <input type="text" id="h-opt-n" placeholder="z. B. Zuhause"></div>
+        <span id="h-opt-n-wrap"><input type="text" id="h-opt-n" placeholder="z. B. Zuhause"></span></div>
       <button id="h-save">Hinzufügen</button>
       <button class="ghost" id="h-cancel" hidden>Abbrechen</button>
     </div>
@@ -270,6 +271,7 @@ setInterval(loadStatus, 30000);
 
 // ---------- Mitgeschaltete Entitäten (Helfer-Regeln) ----------
 let editHelperId = null;
+let entityCache = [];   // {entity_id, name, options|null}
 const TRIGGER_TXT = {heute: "Urlaub heute", morgen: "Urlaub morgen"};
 
 function actionTxt(h){
@@ -280,11 +282,80 @@ function actionTxt(h){
   return t;
 }
 
+async function loadEntities(){
+  try{
+    const data = await (await fetch("api/entities")).json();
+    entityCache = data.entities || [];
+    const dl = $("h-entity-list"); dl.innerHTML = "";
+    for (const e of entityCache){
+      const o = document.createElement("option");
+      o.value = e.entity_id; o.label = e.name;
+      dl.appendChild(o);
+    }
+  }catch(e){ entityCache = []; }
+}
+
+function findEntity(eid){
+  return entityCache.find(e => e.entity_id === eid) || null;
+}
+
+function isSelectId(eid){
+  return eid.startsWith("input_select.") || eid.startsWith("select.");
+}
+
+// Options-Feld als Dropdown (wenn Optionen bekannt) oder Freitext rendern
+function renderOptField(wrapId, inputId, options, value, allowEmpty){
+  const wrap = $(wrapId); wrap.innerHTML = "";
+  if (options && options.length){
+    const sel = document.createElement("select"); sel.id = inputId;
+    if (allowEmpty){
+      const o = document.createElement("option");
+      o.value = ""; o.textContent = "— nicht zurücksetzen —";
+      sel.appendChild(o);
+    }
+    for (const opt of options){
+      const o = document.createElement("option");
+      o.value = opt; o.textContent = opt;
+      sel.appendChild(o);
+    }
+    sel.value = (value && options.includes(value)) ? value : (allowEmpty ? "" : options[0]);
+    wrap.appendChild(sel);
+  } else {
+    const inp = document.createElement("input");
+    inp.type = "text"; inp.id = inputId;
+    inp.placeholder = allowEmpty ? "z. B. Zuhause" : "z. B. Urlaub";
+    inp.value = value || "";
+    wrap.appendChild(inp);
+  }
+}
+
+// Formular an die gewählte Entität anpassen (Aktion einschränken, Optionen laden)
+function syncFormToEntity(optU, optN){
+  const eid = $("h-entity").value.trim();
+  const known = findEntity(eid);
+  const isSel = known ? known.options !== null : isSelectId(eid);
+  const act = $("h-action");
+  act.querySelector('[value="ein"]').disabled = isSel;
+  act.querySelector('[value="aus"]').disabled = isSel;
+  act.querySelector('[value="option"]').disabled = eid !== "" && !isSel;
+  if (isSel) act.value = "option";
+  else if (act.value === "option") act.value = "ein";
+  const opts = (known && known.options) ? known.options : null;
+  renderOptField("h-opt-u-wrap", "h-opt-u", opts, optU, false);
+  renderOptField("h-opt-n-wrap", "h-opt-n", opts, optN, true);
+  toggleOptFields();
+}
+
 function toggleOptFields(){
   const isOpt = $("h-action").value === "option";
   document.querySelectorAll(".optfield").forEach(el => el.hidden = !isOpt);
 }
 $("h-action").addEventListener("change", toggleOptFields);
+$("h-entity").addEventListener("change", () => syncFormToEntity());
+$("h-entity").addEventListener("input", () => {
+  // Datalist-Auswahl feuert oft nur "input"
+  if (findEntity($("h-entity").value.trim())) syncFormToEntity();
+});
 
 async function loadHelpers(){
   const helpers = await (await fetch("api/helpers")).json();
@@ -294,17 +365,18 @@ async function loadHelpers(){
     return;
   }
   for (const h of helpers){
+    const known = findEntity(h.entity);
     const card = document.createElement("div"); card.className = "ucard";
     card.innerHTML = `
       <div class="info">
-        <div class="label mono-ent"></div>
+        <div class="label"></div>
         <div class="range">${TRIGGER_TXT[h.trigger] || h.trigger} · ${actionTxt(h)}</div>
       </div>
       <div class="actions">
         <button class="ghost" data-act="edit">Bearbeiten</button>
         <button class="ghost danger" data-act="del">Löschen</button>
       </div>`;
-    card.querySelector(".label").textContent = h.entity;
+    card.querySelector(".label").textContent = known ? `${known.name} (${h.entity})` : h.entity;
     card.querySelector('[data-act=edit]').onclick = () => startEditHelper(h);
     card.querySelector('[data-act=del]').onclick = async () => {
       if (!confirm(`Regel für ${h.entity} wirklich löschen?`)) return;
@@ -319,21 +391,20 @@ function startEditHelper(h){
   editHelperId = h.id;
   $("h-entity").value = h.entity;
   $("h-trigger").value = h.trigger;
+  syncFormToEntity(h.option_urlaub || "", h.option_normal || "");
   $("h-action").value = h.action;
-  $("h-opt-u").value = h.option_urlaub || "";
-  $("h-opt-n").value = h.option_normal || "";
+  toggleOptFields();
   $("h-save").textContent = "Speichern";
   $("h-cancel").hidden = false;
   $("h-msg").textContent = ""; $("h-msg").className = "form-msg";
-  toggleOptFields();
 }
 function resetHelperForm(){
   editHelperId = null;
-  $("h-entity").value = ""; $("h-opt-u").value = ""; $("h-opt-n").value = "";
+  $("h-entity").value = "";
   $("h-trigger").value = "heute"; $("h-action").value = "ein";
+  syncFormToEntity();
   $("h-save").textContent = "Hinzufügen";
   $("h-cancel").hidden = true;
-  toggleOptFields();
 }
 $("h-cancel").onclick = () => { resetHelperForm(); $("h-msg").textContent = ""; };
 
@@ -342,11 +413,11 @@ $("h-save").onclick = async () => {
     entity: $("h-entity").value.trim(),
     trigger: $("h-trigger").value,
     action: $("h-action").value,
-    option_urlaub: $("h-opt-u").value.trim(),
-    option_normal: $("h-opt-n").value.trim(),
+    option_urlaub: ($("h-opt-u") ? $("h-opt-u").value : "").trim(),
+    option_normal: ($("h-opt-n") ? $("h-opt-n").value : "").trim(),
   };
   const msg = $("h-msg"); msg.className = "form-msg"; msg.textContent = "";
-  if (!body.entity){ msg.textContent = "Bitte eine Entity-ID angeben."; return; }
+  if (!body.entity){ msg.textContent = "Bitte eine Entität auswählen oder eingeben."; return; }
   $("h-save").disabled = true;
   try{
     const resp = await fetch(editHelperId ? "api/helpers/"+editHelperId : "api/helpers", {
@@ -361,8 +432,12 @@ $("h-save").onclick = async () => {
     resetHelperForm(); loadHelpers();
   } finally { $("h-save").disabled = false; }
 };
-toggleOptFields();
-loadHelpers();
+
+(async () => {
+  await loadEntities();
+  resetHelperForm();
+  loadHelpers();
+})();
 </script>
 </body>
 </html>

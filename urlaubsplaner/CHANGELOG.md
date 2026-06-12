@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0
+
+- **Entitäten-Auswahl mit Suche**: schaltbare Entitäten werden mit Friendly Name aus Home Assistant
+  geladen und im Formular als durchsuchbare Liste angeboten (Freitext weiterhin möglich)
+- **Optionen werden mitgeladen**: bei `input_select`/`select` erscheinen die verfügbaren Optionen
+  als Dropdown (inkl. „nicht zurücksetzen“ für die Option danach)
+- Aktion passt sich der Entität an: bei Selects automatisch „Option setzen“,
+  bei Schaltern nur Ein/Aus wählbar
+- Neue API-Route `/api/entities`
+
 ## 1.2.0
 
 - **Mehrere mitgeschaltete Entitäten**: pro Entität eine Regel mit Auslöser (Urlaub heute / Urlaub morgen)

@@ -130,6 +130,11 @@ def api_status():
     )
 
 
+@app.route("/api/entities", methods=["GET"])
+def api_entities():
+    return jsonify({"available": ha_api.available(), "entities": ha_api.list_entities()})
+
+
 @app.route("/api/helpers", methods=["GET"])
 def api_helpers():
     return jsonify(store.load_helpers())
