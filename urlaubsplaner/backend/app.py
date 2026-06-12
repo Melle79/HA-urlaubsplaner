@@ -40,12 +40,20 @@ def publish_now() -> None:
 
 
 def _sync_helper(states: dict) -> None:
-    """Optionale Helfer-Entität (z. B. input_boolean) an „Urlaub heute" angleichen."""
-    entity = store.load_settings().get("helper_entity", "")
-    if not entity:
-        return
-    on = states["urlaub_heute"]["state"] == "ON"
-    ha_api.set_onoff(entity, on)
+    """Helfer-Regeln anwenden: Entitäten je nach Auslöser und Aktion schalten."""
+    for rule in store.load_helpers():
+        key = "urlaub_morgen" if rule.get("trigger") == "morgen" else "urlaub_heute"
+        active = states[key]["state"] == "ON"
+        action = rule.get("action", "ein")
+        entity = rule["entity"]
+        if action == "ein":
+            ha_api.set_onoff(entity, active)
+        elif action == "aus":
+            ha_api.set_onoff(entity, not active)
+        elif action == "option":
+            target = rule.get("option_urlaub") if active else rule.get("option_normal")
+            if target:
+                ha_api.select_option(entity, target)
 
 
 # ---------------------------------------------------------------- MQTT-Commands
@@ -122,24 +130,44 @@ def api_status():
     )
 
 
-@app.route("/api/settings", methods=["GET"])
-def api_get_settings():
-    return jsonify(store.load_settings())
+@app.route("/api/helpers", methods=["GET"])
+def api_helpers():
+    return jsonify(store.load_helpers())
 
 
-@app.route("/api/settings", methods=["PUT"])
-def api_put_settings():
+@app.route("/api/helpers", methods=["POST"])
+def api_add_helper():
     data = request.get_json(silent=True) or {}
     try:
-        settings = store.save_settings(data)
+        rule = store.add_helper(data)
     except store.ValidationError as err:
         return jsonify({"error": str(err)}), 400
-    if settings["helper_entity"] and ha_api.get_state(settings["helper_entity"]) is None:
-        # Speichern trotzdem, aber Hinweis zurückgeben
-        publish_now()
-        return jsonify({**settings, "warning": "Entität wurde in HA nicht gefunden"})
+    warning = None
+    if ha_api.available() and ha_api.get_state(rule["entity"]) is None:
+        warning = "Entität wurde in HA nicht gefunden"
     publish_now()
-    return jsonify(settings)
+    return jsonify({**rule, **({"warning": warning} if warning else {})}), 201
+
+
+@app.route("/api/helpers/<hid>", methods=["PUT"])
+def api_update_helper(hid: str):
+    data = request.get_json(silent=True) or {}
+    try:
+        rule = store.update_helper(hid, data)
+    except store.ValidationError as err:
+        return jsonify({"error": str(err)}), 400
+    if rule is None:
+        return jsonify({"error": "Nicht gefunden"}), 404
+    publish_now()
+    return jsonify(rule)
+
+
+@app.route("/api/helpers/<hid>", methods=["DELETE"])
+def api_delete_helper(hid: str):
+    removed = store.delete_helper(hid)
+    if removed is None:
+        return jsonify({"error": "Nicht gefunden"}), 404
+    return jsonify({"ok": True})
 
 
 @app.route("/api/urlaube", methods=["GET"])

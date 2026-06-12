@@ -74,3 +74,24 @@ def set_onoff(entity_id: str, on: bool) -> bool:
     except Exception as err:  # noqa: BLE001
         _LOGGER.warning("Helfer-Entität %s konnte nicht geschaltet werden: %s", entity_id, err)
         return False
+
+
+def select_option(entity_id: str, option: str) -> bool:
+    """Option einer input_select-/select-Entität setzen (nur wenn abweichend)."""
+    if not available():
+        _LOGGER.warning("Kein SUPERVISOR_TOKEN – Helfer-Entität kann nicht geschaltet werden")
+        return False
+    if get_state(entity_id) == option:
+        return True
+    domain = "input_select" if entity_id.startswith("input_select.") else "select"
+    try:
+        _request(
+            "POST",
+            f"/services/{domain}/select_option",
+            {"entity_id": entity_id, "option": option},
+        )
+        _LOGGER.info("Helfer-Entität %s → Option %r", entity_id, option)
+        return True
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Option für %s konnte nicht gesetzt werden: %s", entity_id, err)
+        return False

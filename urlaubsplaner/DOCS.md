@@ -25,16 +25,24 @@
 
 Die Zustände werden bei jeder Änderung sowie automatisch beim Datumswechsel um Mitternacht neu berechnet.
 
-## Helfer-Entität schalten (optional)
+## Entitäten mitschalten (optional)
 
-Unter **Einstellungen** in der Web-UI kann eine bestehende Entität (z. B. `input_boolean.urlaub`)
-eingetragen werden. Das Add-on schaltet sie dann automatisch synchron zu `binary_sensor.urlaub_heute`:
-**ein** am ersten Urlaubstag, **aus** nach dem letzten – auch beim Datumswechsel um Mitternacht.
+Unter **Mitgeschaltete Entitäten** in der Web-UI können beliebig viele Regeln angelegt werden.
+Jede Regel besteht aus:
 
-Damit lässt sich ein bereits vorhandener, bisher manuell geschalteter Urlaubshelfer direkt
-weiterverwenden, ohne bestehende Automationen anzupassen. Hinweis: Solange eine Entität eingetragen
-ist, „gehört“ sie dem Add-on – manuelles Umschalten wird bei der nächsten Synchronisierung
-(Änderung oder Mitternacht) wieder überschrieben. Feld leeren deaktiviert die Funktion.
+- **Entity-ID** – z. B. `input_boolean.urlaub`, `switch.warmwasser` oder `input_select.hausmodus`
+- **Wann** – Auslöser `Urlaub heute` oder `Urlaub morgen` (z. B. um die Anwesenheitssimulation
+  schon am Vortag scharf zu schalten)
+- **Aktion** – `Im Urlaub einschalten`, `Im Urlaub ausschalten` (invertiert, z. B. für eine
+  Zirkulationspumpe) oder `Option setzen` für `input_select`/`select`-Entitäten:
+  Option im Urlaub plus optional eine Option für danach (ohne „danach“-Option wird nach dem
+  Urlaub nichts zurückgesetzt)
+
+Geschaltet wird bei jeder Änderung, beim Add-on-Start und beim Datumswechsel um Mitternacht –
+und nur, wenn der Zustand tatsächlich abweicht. Hinweis: Solange eine Regel besteht, „gehört“
+die Entität dem Add-on – manuelles Umschalten wird bei der nächsten Synchronisierung wieder
+überschrieben. Eine bestehende Einzel-Einstellung aus v1.1.0 wird beim ersten Start automatisch
+als Regel übernommen.
 
 ## Dashboard-Karte
 

@@ -85,36 +85,117 @@ def delete_urlaub(urlaub_id: str) -> dict | None:
         return removed
 
 
-# ---------------------------------------------------------------- Einstellungen
+# ---------------------------------------------------------------- Helfer-Regeln
 
 import re as _re
 
 SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
-DEFAULT_SETTINGS = {"helper_entity": ""}
 _ENTITY_RE = _re.compile(r"^[a-z_]+\.[a-z0-9_]+$")
 
-
-def load_settings() -> dict:
-    with _lock:
-        settings = dict(DEFAULT_SETTINGS)
-        if os.path.exists(SETTINGS_FILE):
-            try:
-                with open(SETTINGS_FILE, encoding="utf-8") as f:
-                    settings.update(json.load(f))
-            except (json.JSONDecodeError, OSError):
-                pass
-        return settings
+TRIGGERS = ("heute", "morgen")
+ACTIONS = ("ein", "aus", "option")
 
 
-def save_settings(settings: dict) -> dict:
-    helper = str(settings.get("helper_entity", "")).strip().lower()
-    if helper and not _ENTITY_RE.match(helper):
+def _validate_rule(data: dict) -> dict:
+    entity = str(data.get("entity", "")).strip().lower()
+    if not _ENTITY_RE.match(entity):
         raise ValidationError("Ungültige Entity-ID (erwartet z. B. input_boolean.urlaub)")
-    merged = {"helper_entity": helper}
+    trigger = str(data.get("trigger", "heute")).strip().lower()
+    if trigger not in TRIGGERS:
+        raise ValidationError("Ungültiger Auslöser (heute/morgen)")
+    action = str(data.get("action", "ein")).strip().lower()
+    if action not in ACTIONS:
+        raise ValidationError("Ungültige Aktion (ein/aus/option)")
+    option_urlaub = str(data.get("option_urlaub", "")).strip()[:100]
+    option_normal = str(data.get("option_normal", "")).strip()[:100]
+    if action == "option":
+        if entity.split(".")[0] not in ("input_select", "select"):
+            raise ValidationError("'Option setzen' geht nur mit input_select.* oder select.*")
+        if not option_urlaub:
+            raise ValidationError("Bitte die Option für den Urlaub angeben")
+    else:
+        option_urlaub = option_normal = ""
+    return {
+        "entity": entity,
+        "trigger": trigger,
+        "action": action,
+        "option_urlaub": option_urlaub,
+        "option_normal": option_normal,
+    }
+
+
+def _load_settings_raw() -> dict:
+    if not os.path.exists(SETTINGS_FILE):
+        return {}
+    try:
+        with open(SETTINGS_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _save_settings_raw(settings: dict) -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    tmp = SETTINGS_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(settings, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, SETTINGS_FILE)
+
+
+def load_helpers() -> list[dict]:
+    """Helfer-Regeln laden; alte Einzel-Einstellung (v1.1.0) wird migriert."""
     with _lock:
-        os.makedirs(DATA_DIR, exist_ok=True)
-        tmp = SETTINGS_FILE + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(merged, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, SETTINGS_FILE)
-    return merged
+        settings = _load_settings_raw()
+        if "helpers" not in settings:
+            # Migration von v1.1.0 ({"helper_entity": "..."})
+            legacy = str(settings.get("helper_entity", "")).strip().lower()
+            helpers = []
+            if legacy and _ENTITY_RE.match(legacy):
+                helpers.append({
+                    "id": uuid.uuid4().hex[:8], "entity": legacy,
+                    "trigger": "heute", "action": "ein",
+                    "option_urlaub": "", "option_normal": "",
+                })
+            _save_settings_raw({"helpers": helpers})
+            return helpers
+        return settings.get("helpers", [])
+
+
+def add_helper(data: dict) -> dict:
+    rule = _validate_rule(data)
+    rule["id"] = uuid.uuid4().hex[:8]
+    with _lock:
+        settings = _load_settings_raw()
+        helpers = settings.get("helpers", [])
+        if any(h["entity"] == rule["entity"] and h["trigger"] == rule["trigger"] for h in helpers):
+            raise ValidationError("Für diese Entität gibt es mit diesem Auslöser bereits eine Regel")
+        helpers.append(rule)
+        _save_settings_raw({"helpers": helpers})
+    return rule
+
+
+def update_helper(helper_id: str, data: dict) -> dict | None:
+    rule = _validate_rule(data)
+    with _lock:
+        settings = _load_settings_raw()
+        helpers = settings.get("helpers", [])
+        entry = next((h for h in helpers if h.get("id") == helper_id), None)
+        if entry is None:
+            return None
+        if any(h["entity"] == rule["entity"] and h["trigger"] == rule["trigger"]
+               and h.get("id") != helper_id for h in helpers):
+            raise ValidationError("Für diese Entität gibt es mit diesem Auslöser bereits eine Regel")
+        entry.update(rule)
+        _save_settings_raw({"helpers": helpers})
+    return entry
+
+
+def delete_helper(helper_id: str) -> dict | None:
+    with _lock:
+        settings = _load_settings_raw()
+        helpers = settings.get("helpers", [])
+        removed = next((h for h in helpers if h.get("id") == helper_id), None)
+        if removed:
+            helpers = [h for h in helpers if h.get("id") != helper_id]
+            _save_settings_raw({"helpers": helpers})
+        return removed

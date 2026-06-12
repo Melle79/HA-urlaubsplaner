@@ -37,12 +37,12 @@
   .form-grid{display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end}
   .field{display:flex; flex-direction:column; gap:6px; min-width:160px; flex:1}
   .field label{font-size:.78rem; color:var(--muted)}
-  input[type=text],input[type=date]{
+  input[type=text],input[type=date],select{
     background:var(--surface2); border:1px solid var(--line); border-radius:8px;
     color:var(--text); padding:9px 10px; font-size:.92rem; width:100%;
     color-scheme:dark;
   }
-  input:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:transparent}
+  input:focus,select:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:transparent}
   button{
     border:none; border-radius:8px; padding:10px 18px; font-size:.92rem; font-weight:600;
     cursor:pointer; background:var(--accent); color:#1a1408;
@@ -117,16 +117,37 @@
   </section>
 
   <section class="panel">
-    <h2>Einstellungen</h2>
-    <div class="form-grid">
-      <div class="field"><label for="s-helper">Helfer-Entität schalten (optional)</label>
-        <input type="text" id="s-helper" placeholder="z. B. input_boolean.urlaub"></div>
-      <button id="s-save">Speichern</button>
+    <h2>Mitgeschaltete Entitäten</h2>
+    <div class="cards" id="hlist"><div class="empty">Lade…</div></div>
+    <div class="form-grid" style="margin-top:14px">
+      <div class="field"><label for="h-entity">Entity-ID</label>
+        <input type="text" id="h-entity" placeholder="z. B. input_boolean.urlaub"></div>
+      <div class="field" style="flex:0 1 170px"><label for="h-trigger">Wann</label>
+        <select id="h-trigger">
+          <option value="heute">Urlaub heute</option>
+          <option value="morgen">Urlaub morgen</option>
+        </select></div>
+      <div class="field" style="flex:0 1 220px"><label for="h-action">Aktion</label>
+        <select id="h-action">
+          <option value="ein">Im Urlaub einschalten</option>
+          <option value="aus">Im Urlaub ausschalten</option>
+          <option value="option">Option setzen (input_select)</option>
+        </select></div>
+      <div class="field optfield" hidden><label for="h-opt-u">Option im Urlaub</label>
+        <input type="text" id="h-opt-u" placeholder="z. B. Urlaub"></div>
+      <div class="field optfield" hidden><label for="h-opt-n">Option danach (optional)</label>
+        <input type="text" id="h-opt-n" placeholder="z. B. Zuhause"></div>
+      <button id="h-save">Hinzufügen</button>
+      <button class="ghost" id="h-cancel" hidden>Abbrechen</button>
     </div>
-    <div class="form-msg" id="s-msg"></div>
-    <div class="hint">Wird eine Entity-ID eingetragen, schaltet das Add-on diese Entität automatisch
-      synchron zu <code>binary_sensor.urlaub_heute</code>: <b>ein</b> am ersten Urlaubstag,
-      <b>aus</b> nach dem letzten – auch beim Datumswechsel um Mitternacht. Feld leeren = Funktion aus.</div>
+    <div class="form-msg" id="h-msg"></div>
+    <div class="hint">Jede Regel hält ihre Entität synchron zum gewählten Auslöser
+      (<code>binary_sensor.urlaub_heute</code> bzw. <code>urlaub_morgen</code>) – bei Änderungen,
+      beim Start und beim Datumswechsel um Mitternacht. <b>Einschalten</b>/<b>Ausschalten</b> für
+      Schalter und Helfer, <b>Option setzen</b> für <code>input_select</code>/<code>select</code>
+      (z. B. Hausmodus „Urlaub", danach zurück auf „Zuhause"; ohne „danach"-Option wird nach dem
+      Urlaub nichts zurückgesetzt). Manuelles Umschalten wird bei der nächsten Synchronisierung
+      überschrieben, solange die Regel besteht.</div>
   </section>
 </main>
 <script>
@@ -247,30 +268,101 @@ function refresh(){ loadStatus(); loadList(); }
 refresh();
 setInterval(loadStatus, 30000);
 
-// ---------- Einstellungen ----------
-async function loadSettings(){
-  try{
-    const s = await (await fetch("api/settings")).json();
-    $("s-helper").value = s.helper_entity || "";
-  }catch(e){}
+// ---------- Mitgeschaltete Entitäten (Helfer-Regeln) ----------
+let editHelperId = null;
+const TRIGGER_TXT = {heute: "Urlaub heute", morgen: "Urlaub morgen"};
+
+function actionTxt(h){
+  if (h.action === "ein") return "Im Urlaub einschalten";
+  if (h.action === "aus") return "Im Urlaub ausschalten";
+  let t = `Option „${h.option_urlaub}"`;
+  if (h.option_normal) t += ` → danach „${h.option_normal}"`;
+  return t;
 }
-$("s-save").onclick = async () => {
-  $("s-save").disabled = true;
-  const msg = $("s-msg"); msg.className = "form-msg"; msg.textContent = "";
+
+function toggleOptFields(){
+  const isOpt = $("h-action").value === "option";
+  document.querySelectorAll(".optfield").forEach(el => el.hidden = !isOpt);
+}
+$("h-action").addEventListener("change", toggleOptFields);
+
+async function loadHelpers(){
+  const helpers = await (await fetch("api/helpers")).json();
+  const list = $("hlist"); list.innerHTML = "";
+  if (!helpers.length){
+    list.innerHTML = '<div class="empty">Keine Entitäten eingetragen – das Add-on schaltet nichts mit.</div>';
+    return;
+  }
+  for (const h of helpers){
+    const card = document.createElement("div"); card.className = "ucard";
+    card.innerHTML = `
+      <div class="info">
+        <div class="label mono-ent"></div>
+        <div class="range">${TRIGGER_TXT[h.trigger] || h.trigger} · ${actionTxt(h)}</div>
+      </div>
+      <div class="actions">
+        <button class="ghost" data-act="edit">Bearbeiten</button>
+        <button class="ghost danger" data-act="del">Löschen</button>
+      </div>`;
+    card.querySelector(".label").textContent = h.entity;
+    card.querySelector('[data-act=edit]').onclick = () => startEditHelper(h);
+    card.querySelector('[data-act=del]').onclick = async () => {
+      if (!confirm(`Regel für ${h.entity} wirklich löschen?`)) return;
+      await fetch("api/helpers/"+h.id, {method:"DELETE"});
+      resetHelperForm(); loadHelpers();
+    };
+    list.appendChild(card);
+  }
+}
+
+function startEditHelper(h){
+  editHelperId = h.id;
+  $("h-entity").value = h.entity;
+  $("h-trigger").value = h.trigger;
+  $("h-action").value = h.action;
+  $("h-opt-u").value = h.option_urlaub || "";
+  $("h-opt-n").value = h.option_normal || "";
+  $("h-save").textContent = "Speichern";
+  $("h-cancel").hidden = false;
+  $("h-msg").textContent = ""; $("h-msg").className = "form-msg";
+  toggleOptFields();
+}
+function resetHelperForm(){
+  editHelperId = null;
+  $("h-entity").value = ""; $("h-opt-u").value = ""; $("h-opt-n").value = "";
+  $("h-trigger").value = "heute"; $("h-action").value = "ein";
+  $("h-save").textContent = "Hinzufügen";
+  $("h-cancel").hidden = true;
+  toggleOptFields();
+}
+$("h-cancel").onclick = () => { resetHelperForm(); $("h-msg").textContent = ""; };
+
+$("h-save").onclick = async () => {
+  const body = {
+    entity: $("h-entity").value.trim(),
+    trigger: $("h-trigger").value,
+    action: $("h-action").value,
+    option_urlaub: $("h-opt-u").value.trim(),
+    option_normal: $("h-opt-n").value.trim(),
+  };
+  const msg = $("h-msg"); msg.className = "form-msg"; msg.textContent = "";
+  if (!body.entity){ msg.textContent = "Bitte eine Entity-ID angeben."; return; }
+  $("h-save").disabled = true;
   try{
-    const resp = await fetch("api/settings", {
-      method: "PUT",
+    const resp = await fetch(editHelperId ? "api/helpers/"+editHelperId : "api/helpers", {
+      method: editHelperId ? "PUT" : "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({helper_entity: $("s-helper").value.trim()}),
+      body: JSON.stringify(body),
     });
     const data = await resp.json().catch(()=>({}));
     if (!resp.ok){ msg.textContent = data.error || "Speichern fehlgeschlagen."; return; }
-    if (data.warning){ msg.textContent = "Gespeichert – aber: " + data.warning + "."; return; }
-    msg.className = "form-msg ok";
-    msg.textContent = data.helper_entity ? "Gespeichert – Entität wird ab jetzt mitgeschaltet." : "Gespeichert – Funktion deaktiviert.";
-  } finally { $("s-save").disabled = false; }
+    if (data.warning){ msg.textContent = "Gespeichert – aber: " + data.warning + "."; }
+    else { msg.className = "form-msg ok"; msg.textContent = "Gespeichert."; }
+    resetHelperForm(); loadHelpers();
+  } finally { $("h-save").disabled = false; }
 };
-loadSettings();
+toggleOptFields();
+loadHelpers();
 </script>
 </body>
 </html>

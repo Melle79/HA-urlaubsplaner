@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0
+
+- **Mehrere mitgeschaltete Entitäten**: pro Entität eine Regel mit Auslöser (Urlaub heute / Urlaub morgen)
+  und Aktion (im Urlaub einschalten / ausschalten / Option setzen)
+- **Option setzen** für `input_select`/`select`: Option im Urlaub und optional eine Option für danach
+- Bestehende Einzel-Einstellung aus v1.1.0 wird automatisch als Regel übernommen
+- Neue API-Routen `/api/helpers` (CRUD), `/api/settings` entfernt
+
 ## 1.1.0
 
 - Optionale Helfer-Entität: eine bestehende Entität (z. B. `input_boolean.urlaub`) wird automatisch
