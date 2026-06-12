@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Urlaubsplaner</title>
+<style>
+  :root{
+    --bg:#0f1216; --surface:#181d24; --surface2:#1f2630; --line:#2a313b;
+    --text:#e8ecf1; --muted:#8a94a3;
+    --urlaub:#4cc38a; --geplant:#7aa2ff; --vorbei:#5a6472;
+    --danger:#e36d6d; --accent:#e8a23d;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:"Avenir Next","Segoe UI",system-ui,sans-serif;
+    font-size:15px; line-height:1.5; min-height:100vh;
+  }
+  header{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    padding:18px 22px; border-bottom:1px solid var(--line);
+  }
+  header h1{font-size:1.15rem; font-weight:600; letter-spacing:.02em}
+  header .sub{color:var(--muted); font-size:.85rem}
+  .status{margin-left:auto; display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--muted)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--danger);flex:none}
+  .dot.ok{background:var(--urlaub)}
+  main{width:100%; max-width:880px; margin:0 auto; padding:22px 26px}
+
+  .panel{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 20px; margin-bottom:26px;
+  }
+  .panel h2{font-size:.8rem; text-transform:uppercase; letter-spacing:.12em; color:var(--muted); margin-bottom:14px}
+  .form-grid{display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end}
+  .field{display:flex; flex-direction:column; gap:6px; min-width:160px; flex:1}
+  .field label{font-size:.78rem; color:var(--muted)}
+  input[type=text],input[type=date]{
+    background:var(--surface2); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); padding:9px 10px; font-size:.92rem; width:100%;
+    color-scheme:dark;
+  }
+  input:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:transparent}
+  button{
+    border:none; border-radius:8px; padding:10px 18px; font-size:.92rem; font-weight:600;
+    cursor:pointer; background:var(--accent); color:#1a1408;
+  }
+  button:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.45; cursor:default}
+  button.ghost{background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:500; padding:7px 12px}
+  button.ghost:hover{color:var(--text); border-color:var(--muted); filter:none}
+  button.ghost.danger:hover{color:var(--danger); border-color:var(--danger)}
+  .form-msg{margin-top:10px; font-size:.85rem; color:var(--danger); min-height:1.2em}
+
+  .cards{display:flex; flex-direction:column; gap:12px}
+  .ucard{
+    background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 18px; display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  }
+  .ucard .info{flex:1; min-width:200px}
+  .ucard .label{font-weight:600}
+  .ucard .range{color:var(--muted); font-size:.88rem}
+  .pill{
+    font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.08em;
+    padding:4px 10px; border-radius:999px; flex:none;
+  }
+  .pill.aktiv{background:rgba(76,195,138,.15); color:var(--urlaub)}
+  .pill.geplant{background:rgba(122,162,255,.15); color:var(--geplant)}
+  .pill.vorbei{background:rgba(90,100,114,.2); color:var(--vorbei)}
+  .actions{display:flex; gap:8px; flex:none}
+  .empty{color:var(--muted); font-size:.9rem; padding:8px 2px}
+
+  details.entbox{border:1px solid var(--line); border-radius:8px; background:var(--surface2); margin-top:16px}
+  details.entbox summary{cursor:pointer; padding:8px 12px; font-size:.82rem; color:var(--muted); list-style:none}
+  details.entbox summary::before{content:"▸ "} details.entbox[open] summary::before{content:"▾ "}
+  details.entbox .entlist{display:flex; flex-direction:column; gap:5px; padding:4px 12px 11px}
+  details.entbox code{
+    font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:.8rem; color:var(--text);
+    background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:4px 8px;
+    cursor:copy; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  details.entbox code:hover{border-color:var(--accent)}
+  details.entbox code.copied{border-color:var(--urlaub); color:var(--urlaub)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏖️ Urlaubsplaner</h1>
+  <span class="sub" id="version"></span>
+  <div class="status"><span class="dot" id="mqtt-dot"></span><span id="mqtt-text">MQTT…</span></div>
+</header>
+<main>
+  <section class="panel">
+    <h2 id="form-title">Urlaub anlegen</h2>
+    <div class="form-grid">
+      <div class="field"><label for="f-label">Bezeichnung (optional)</label>
+        <input type="text" id="f-label" placeholder="z. B. Sommerurlaub Italien" maxlength="60"></div>
+      <div class="field"><label for="f-start">Von</label><input type="date" id="f-start"></div>
+      <div class="field"><label for="f-end">Bis</label><input type="date" id="f-end"></div>
+      <button id="f-save">Speichern</button>
+      <button class="ghost" id="f-cancel" hidden>Abbrechen</button>
+    </div>
+    <div class="form-msg" id="f-msg"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Urlaube</h2>
+    <div class="cards" id="list"><div class="empty">Lade…</div></div>
+    <details class="entbox"><summary>Entitäten (Klick = kopieren)</summary>
+      <div class="entlist" id="entlist"></div>
+    </details>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+let editId = null;
+
+function fmt(iso){
+  const [y,m,d] = iso.split("-");
+  return `${d}.${m}.${y}`;
+}
+function statusOf(u){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const s = new Date(u.start+"T00:00:00"), e = new Date(u.end+"T00:00:00");
+  if (e < today) return ["vorbei","Vorbei"];
+  if (s <= today) return ["aktiv","Aktiv"];
+  return ["geplant","Geplant"];
+}
+function days(u){
+  const s = new Date(u.start+"T00:00:00"), e = new Date(u.end+"T00:00:00");
+  return Math.round((e-s)/86400000)+1;
+}
+
+async function loadStatus(){
+  try{
+    const st = await (await fetch("api/status")).json();
+    $("version").textContent = "v"+st.version;
+    $("mqtt-dot").className = "dot"+(st.mqtt_connected?" ok":"");
+    $("mqtt-text").textContent = st.mqtt_connected ? "MQTT verbunden" : "MQTT getrennt";
+    $("entlist").innerHTML = "";
+    for (const e of st.entities){
+      const c = document.createElement("code");
+      c.textContent = e.entity_id; c.title = e.name;
+      c.onclick = () => navigator.clipboard.writeText(e.entity_id)
+        .then(()=>{c.classList.add("copied"); setTimeout(()=>c.classList.remove("copied"),900);});
+      $("entlist").appendChild(c);
+    }
+  }catch(e){ $("mqtt-text").textContent = "Status nicht erreichbar"; }
+}
+
+async function loadList(){
+  const urlaube = await (await fetch("api/urlaube")).json();
+  const list = $("list"); list.innerHTML = "";
+  if (!urlaube.length){
+    list.innerHTML = '<div class="empty">Noch keine Urlaube eingetragen.</div>';
+    return;
+  }
+  for (const u of urlaube){
+    const [cls, txt] = statusOf(u);
+    const card = document.createElement("div"); card.className = "ucard";
+    card.innerHTML = `
+      <span class="pill ${cls}">${txt}</span>
+      <div class="info">
+        <div class="label"></div>
+        <div class="range">${fmt(u.start)} – ${fmt(u.end)} · ${days(u)} Tage</div>
+      </div>
+      <div class="actions">
+        <button class="ghost" data-act="edit">Bearbeiten</button>
+        <button class="ghost danger" data-act="del">Löschen</button>
+      </div>`;
+    card.querySelector(".label").textContent = u.label || "Urlaub";
+    card.querySelector('[data-act=edit]').onclick = () => startEdit(u);
+    card.querySelector('[data-act=del]').onclick = async () => {
+      if (!confirm(`„${u.label || "Urlaub"}" (${fmt(u.start)} – ${fmt(u.end)}) wirklich löschen?`)) return;
+      await fetch("api/urlaube/"+u.id, {method:"DELETE"});
+      refresh();
+    };
+    list.appendChild(card);
+  }
+}
+
+function startEdit(u){
+  editId = u.id;
+  $("form-title").textContent = "Urlaub bearbeiten";
+  $("f-label").value = u.label || "";
+  $("f-start").value = u.start;
+  $("f-end").value = u.end;
+  $("f-cancel").hidden = false;
+  $("f-msg").textContent = "";
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function resetForm(){
+  editId = null;
+  $("form-title").textContent = "Urlaub anlegen";
+  $("f-label").value = ""; $("f-start").value = ""; $("f-end").value = "";
+  $("f-cancel").hidden = true; $("f-msg").textContent = "";
+}
+$("f-cancel").onclick = resetForm;
+
+$("f-start").addEventListener("change", () => {
+  // Bis-Feld sinnvoll vorbelegen und Mindestdatum setzen
+  if ($("f-start").value){
+    $("f-end").min = $("f-start").value;
+    if (!$("f-end").value || $("f-end").value < $("f-start").value)
+      $("f-end").value = $("f-start").value;
+  }
+});
+
+$("f-save").onclick = async () => {
+  const body = {label: $("f-label").value.trim(), start: $("f-start").value, end: $("f-end").value};
+  if (!body.start || !body.end){ $("f-msg").textContent = "Bitte Von- und Bis-Datum angeben."; return; }
+  $("f-save").disabled = true;
+  try{
+    const resp = await fetch(editId ? "api/urlaube/"+editId : "api/urlaube", {
+      method: editId ? "PUT" : "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok){
+      const err = await resp.json().catch(()=>({}));
+      $("f-msg").textContent = err.error || "Speichern fehlgeschlagen.";
+      return;
+    }
+    resetForm(); refresh();
+  } finally { $("f-save").disabled = false; }
+};
+
+function refresh(){ loadStatus(); loadList(); }
+refresh();
+setInterval(loadStatus, 30000);
+</script>
+</body>
+</html>
