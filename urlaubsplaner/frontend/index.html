@@ -101,7 +101,11 @@
       <div class="field"><label for="f-label">Bezeichnung (optional)</label>
         <input type="text" id="f-label" placeholder="z. B. Sommerurlaub Italien" maxlength="60"></div>
       <div class="field"><label for="f-start">Von</label><input type="date" id="f-start"></div>
+      <div class="field" style="flex:0 1 130px"><label for="f-start-time">Abfahrt (Uhrzeit, optional)</label>
+        <input type="time" id="f-start-time" placeholder="08:00"></div>
       <div class="field"><label for="f-end">Bis</label><input type="date" id="f-end"></div>
+      <div class="field" style="flex:0 1 130px"><label for="f-end-time">Ankunft (Uhrzeit, optional)</label>
+        <input type="time" id="f-end-time" placeholder="20:00"></div>
       <button id="f-save">Speichern</button>
       <button class="ghost" id="f-cancel" hidden>Abbrechen</button>
     </div>
@@ -209,6 +213,8 @@ async function loadList(){
         <button class="ghost danger" data-act="del">Löschen</button>
       </div>`;
     card.querySelector(".label").textContent = u.label || "Urlaub";
+    const times = [u.start_time ? `ab ${u.start_time}` : "", u.end_time ? `bis ${u.end_time} Uhr` : ""].filter(Boolean).join(" · ");
+    card.querySelector(".range").textContent = `${fmt(u.start)} – ${fmt(u.end)}${times ? " · " + times : ""} · ${days(u)} Tage`;
     card.querySelector('[data-act=edit]').onclick = () => startEdit(u);
     card.querySelector('[data-act=del]').onclick = async () => {
       if (!confirm(`„${u.label || "Urlaub"}" (${fmt(u.start)} – ${fmt(u.end)}) wirklich löschen?`)) return;
@@ -224,7 +230,9 @@ function startEdit(u){
   $("form-title").textContent = "Urlaub bearbeiten";
   $("f-label").value = u.label || "";
   $("f-start").value = u.start;
+  $("f-start-time").value = u.start_time || "";
   $("f-end").value = u.end;
+  $("f-end-time").value = u.end_time || "";
   $("f-cancel").hidden = false;
   $("f-msg").textContent = "";
   window.scrollTo({top:0, behavior:"smooth"});
@@ -232,7 +240,8 @@ function startEdit(u){
 function resetForm(){
   editId = null;
   $("form-title").textContent = "Urlaub anlegen";
-  $("f-label").value = ""; $("f-start").value = ""; $("f-end").value = "";
+  $("f-label").value = ""; $("f-start").value = ""; $("f-start-time").value = "";
+  $("f-end").value = ""; $("f-end-time").value = "";
   $("f-cancel").hidden = true; $("f-msg").textContent = "";
 }
 $("f-cancel").onclick = resetForm;
@@ -247,7 +256,11 @@ $("f-start").addEventListener("change", () => {
 });
 
 $("f-save").onclick = async () => {
-  const body = {label: $("f-label").value.trim(), start: $("f-start").value, end: $("f-end").value};
+  const body = {
+    label: $("f-label").value.trim(),
+    start: $("f-start").value, start_time: $("f-start-time").value,
+    end: $("f-end").value,     end_time:   $("f-end-time").value,
+  };
   if (!body.start || !body.end){ $("f-msg").textContent = "Bitte Von- und Bis-Datum angeben."; return; }
   $("f-save").disabled = true;
   try{

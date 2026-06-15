@@ -4,8 +4,8 @@ from __future__ import annotations
 import logging
 import os
 import threading
-import time
-from datetime import date
+import time as time_module
+from datetime import date, datetime, timedelta
 
 from flask import Flask, jsonify, request, send_from_directory
 
@@ -65,15 +65,15 @@ def handle_command(payload: dict) -> None:
     try:
         if action == "add":
             entry = store.add_urlaub(
-                payload.get("start"), payload.get("end"), payload.get("label", "")
+                payload.get("start"), payload.get("end"), payload.get("label", ""),
+                payload.get("start_time", ""), payload.get("end_time", ""),
             )
             _LOGGER.info("Command: Urlaub angelegt (%s)", entry["id"])
         elif action == "update":
             entry = store.update_urlaub(
                 str(payload.get("id", "")),
-                payload.get("start"),
-                payload.get("end"),
-                payload.get("label", ""),
+                payload.get("start"), payload.get("end"), payload.get("label", ""),
+                payload.get("start_time", ""), payload.get("end_time", ""),
             )
             if entry is None:
                 _LOGGER.warning("Command: Urlaub %s nicht gefunden", payload.get("id"))
@@ -97,17 +97,30 @@ def handle_command(payload: dict) -> None:
 # ---------------------------------------------------------------- Scheduler
 
 def _scheduler() -> None:
-    """Bei Datumswechsel Zustände neu berechnen und publizieren."""
+    """Genau zu relevanten Zeitpunkten neu berechnen:
+    - täglich um Mitternacht (Datumswechsel)
+    - zur start_time / end_time von heutigen Zeiträumen
+    """
     last_day = date.today()
     while True:
-        time.sleep(60)
         try:
+            urlaube = store.load_urlaube()
+            wakeup = logic.next_wakeup(urlaube)
+            now = datetime.now()
+            midnight = datetime.combine(date.today() + timedelta(days=1), __import__("datetime").time(0, 0, 5))
+            next_tick = min(wakeup, midnight) if wakeup else midnight
+            sleep_secs = max(10, (next_tick - now).total_seconds())
+            time_module.sleep(sleep_secs)
             if date.today() != last_day:
                 last_day = date.today()
                 _LOGGER.info("Datumswechsel – Zustände werden neu berechnet")
-                publish_now()
+            else:
+                _LOGGER.info("Uhrzeit-Trigger %s – Zustände werden neu berechnet",
+                             next_tick.strftime("%H:%M"))
+            publish_now()
         except Exception as err:  # noqa: BLE001
             _LOGGER.error("Scheduler-Fehler: %s", err)
+            time_module.sleep(60)
 
 
 # ---------------------------------------------------------------- Routen
@@ -184,7 +197,10 @@ def api_urlaube():
 def api_add_urlaub():
     data = request.get_json(silent=True) or {}
     try:
-        entry = store.add_urlaub(data.get("start"), data.get("end"), data.get("label", ""))
+        entry = store.add_urlaub(
+            data.get("start"), data.get("end"), data.get("label", ""),
+            data.get("start_time", ""), data.get("end_time", ""),
+        )
     except store.ValidationError as err:
         return jsonify({"error": str(err)}), 400
     publish_now()
@@ -195,7 +211,10 @@ def api_add_urlaub():
 def api_update_urlaub(uid: str):
     data = request.get_json(silent=True) or {}
     try:
-        entry = store.update_urlaub(uid, data.get("start"), data.get("end"), data.get("label", ""))
+        entry = store.update_urlaub(
+            uid, data.get("start"), data.get("end"), data.get("label", ""),
+            data.get("start_time", ""), data.get("end_time", ""),
+        )
     except store.ValidationError as err:
         return jsonify({"error": str(err)}), 400
     if entry is None:

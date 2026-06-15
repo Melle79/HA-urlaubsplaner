@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0
+
+- **Optionale Start- und Endzeit** pro Urlaubszeitraum: Abfahrtszeit (Urlaub beginnt erst dann)
+  und Ankunftszeit (Urlaub endet dann) können gesetzt werden
+- Uhrzeitfelder in der Web-UI (Kalender-Popup oder manuelle Eingabe HH:MM)
+- `binary_sensor.urlaub_heute` und `urlaub_morgen` schalten exakt zur konfigurierten Uhrzeit
+- Neuer Scheduler: wacht präzise zur Start-/Endzeit auf, nicht nur um Mitternacht
+- Neue Attribute `startzeit` / `endzeit` in den Entitäten
+- Validierung: Endzeit muss nach Startzeit liegen (bei gleichem Tag)
+
 ## 1.3.0
 
 - **Entitäten-Auswahl mit Suche**: schaltbare Entitäten werden mit Friendly Name aus Home Assistant

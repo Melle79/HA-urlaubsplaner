@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import threading
 import uuid
 from datetime import date
@@ -34,7 +35,21 @@ def _save(urlaube: list[dict]) -> None:
     os.replace(tmp, URLAUBE_FILE)
 
 
-def _validate(start: str, end: str, label: str) -> tuple[str, str, str]:
+_TIME_RE = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
+
+
+def _validate_time(t: str | None) -> str:
+    """Uhrzeit validieren; leer/None -> '' (= ganzer Tag)."""
+    if not t:
+        return ""
+    t = str(t).strip()
+    if not _TIME_RE.match(t):
+        raise ValidationError("Ungültige Uhrzeit (erwartet HH:MM, z. B. 08:30)")
+    return t
+
+
+def _validate(start: str, end: str, label: str,
+              start_time: str = "", end_time: str = "") -> tuple[str, str, str, str, str]:
     try:
         start_d = date.fromisoformat(str(start))
         end_d = date.fromisoformat(str(end))
@@ -42,20 +57,26 @@ def _validate(start: str, end: str, label: str) -> tuple[str, str, str]:
         raise ValidationError("Ungültiges Datum (erwartet JJJJ-MM-TT)") from err
     if end_d < start_d:
         raise ValidationError("Das Ende darf nicht vor dem Beginn liegen")
+    start_t = _validate_time(start_time)
+    end_t = _validate_time(end_time)
+    if start_d == end_d and start_t and end_t and end_t <= start_t:
+        raise ValidationError("Die Endzeit muss nach der Startzeit liegen")
     label = str(label or "").strip()[:60] or "Urlaub"
-    return start_d.isoformat(), end_d.isoformat(), label
+    return start_d.isoformat(), end_d.isoformat(), label, start_t, end_t
 
 
 def load_urlaube() -> list[dict]:
     with _lock:
         urlaube = _load()
-    urlaube.sort(key=lambda u: (u.get("start", ""), u.get("end", "")))
+    urlaube.sort(key=lambda u: (u.get("start", ""), u.get("start_time", ""), u.get("end", "")))
     return urlaube
 
 
-def add_urlaub(start: str, end: str, label: str = "") -> dict:
-    start, end, label = _validate(start, end, label)
-    entry = {"id": uuid.uuid4().hex[:8], "start": start, "end": end, "label": label}
+def add_urlaub(start: str, end: str, label: str = "",
+               start_time: str = "", end_time: str = "") -> dict:
+    start, end, label, start_t, end_t = _validate(start, end, label, start_time, end_time)
+    entry = {"id": uuid.uuid4().hex[:8], "start": start, "end": end, "label": label,
+             "start_time": start_t, "end_time": end_t}
     with _lock:
         urlaube = _load()
         urlaube.append(entry)
@@ -63,14 +84,16 @@ def add_urlaub(start: str, end: str, label: str = "") -> dict:
     return entry
 
 
-def update_urlaub(urlaub_id: str, start: str, end: str, label: str = "") -> dict | None:
-    start, end, label = _validate(start, end, label)
+def update_urlaub(urlaub_id: str, start: str, end: str, label: str = "",
+                  start_time: str = "", end_time: str = "") -> dict | None:
+    start, end, label, start_t, end_t = _validate(start, end, label, start_time, end_time)
     with _lock:
         urlaube = _load()
         entry = next((u for u in urlaube if u.get("id") == urlaub_id), None)
         if entry is None:
             return None
-        entry.update({"start": start, "end": end, "label": label})
+        entry.update({"start": start, "end": end, "label": label,
+                      "start_time": start_t, "end_time": end_t})
         _save(urlaube)
     return entry
 
