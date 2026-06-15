@@ -37,7 +37,7 @@
   .form-grid{display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end}
   .field{display:flex; flex-direction:column; gap:6px; min-width:160px; flex:1}
   .field label{font-size:.78rem; color:var(--muted)}
-  input[type=text],input[type=date],select{
+  input[type=text],input[type=date],input[type=time],select{
     background:var(--surface2); border:1px solid var(--line); border-radius:8px;
     color:var(--text); padding:9px 10px; font-size:.92rem; width:100%;
     color-scheme:dark;
@@ -98,14 +98,14 @@
   <section class="panel">
     <h2 id="form-title">Urlaub anlegen</h2>
     <div class="form-grid">
-      <div class="field"><label for="f-label">Bezeichnung (optional)</label>
+      <div class="field" style="flex:1 1 100%"><label for="f-label">Bezeichnung (optional)</label>
         <input type="text" id="f-label" placeholder="z. B. Sommerurlaub Italien" maxlength="60"></div>
       <div class="field"><label for="f-start">Von</label><input type="date" id="f-start"></div>
-      <div class="field" style="flex:0 1 130px"><label for="f-start-time">Abfahrt (Uhrzeit, optional)</label>
-        <input type="time" id="f-start-time" placeholder="08:00"></div>
+      <div class="field" style="flex:0 1 140px"><label for="f-start-time">Abfahrt (optional)</label>
+        <input type="time" id="f-start-time"></div>
       <div class="field"><label for="f-end">Bis</label><input type="date" id="f-end"></div>
-      <div class="field" style="flex:0 1 130px"><label for="f-end-time">Ankunft (Uhrzeit, optional)</label>
-        <input type="time" id="f-end-time" placeholder="20:00"></div>
+      <div class="field" style="flex:0 1 140px"><label for="f-end-time">Ankunft (optional)</label>
+        <input type="time" id="f-end-time"></div>
       <button id="f-save">Speichern</button>
       <button class="ghost" id="f-cancel" hidden>Abbrechen</button>
     </div>
