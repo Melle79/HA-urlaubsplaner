@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0
+
+- Fix: Scheduler fährt beim Add-on-Start sofort `_sync_helpers()` aus,
+  damit laufende Urlaube nach einem Neustart korrekt geschaltet werden
+- Scheduler-Log zeigt jetzt auch die Stunden bis zum nächsten Weckpunkt
+- Startup-Log zeigt Systemzeit und Zeitzone des Containers
+
 ## 1.4.9
 
 - Komplette Trennung: `publish_now()` schaltet **niemals** Helfer-Entitäten

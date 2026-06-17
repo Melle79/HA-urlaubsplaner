@@ -113,10 +113,14 @@ def handle_command(payload: dict) -> None:
 # ---------------------------------------------------------------- Scheduler
 
 def _scheduler() -> None:
-    """Genau zu relevanten Zeitpunkten neu berechnen:
-    - täglich um Mitternacht (Datumswechsel)
-    - zur start_time / end_time von heutigen Zeiträumen
+    """Helfer zu relevanten Zeitpunkten schalten:
+    - Einmalig beim Start (für laufende Urlaube)
+    - täglich um Mitternacht
+    - zur start_time / end_time wenn konfiguriert
     """
+    _LOGGER.info("Scheduler gestartet – einmaliger Sync beim Start")
+    _sync_helpers()  # sofort beim Start: laufende Urlaube berücksichtigen
+
     last_day = date.today()
     while True:
         try:
@@ -127,15 +131,15 @@ def _scheduler() -> None:
             next_tick = min(wakeup, midnight) if wakeup else midnight
             sleep_secs = max(10, (next_tick - now).total_seconds())
             _LOGGER.info(
-                "Scheduler: nächster Weckzeitpunkt %s (in %.0f s)",
-                next_tick.strftime("%d.%m. %H:%M"), sleep_secs,
+                "Scheduler: nächster Weckzeitpunkt %s (in %.0f s / %.1f h)",
+                next_tick.strftime("%d.%m. %H:%M"), sleep_secs, sleep_secs / 3600,
             )
             time_module.sleep(sleep_secs)
             if date.today() != last_day:
                 last_day = date.today()
-                _LOGGER.info("Datumswechsel – Zustände werden neu berechnet")
+                _LOGGER.info("Datumswechsel – Helfer werden synchronisiert")
             else:
-                _LOGGER.info("Uhrzeit-Trigger %s – Zustände werden neu berechnet",
+                _LOGGER.info("Uhrzeit-Trigger %s – Helfer werden synchronisiert",
                              next_tick.strftime("%H:%M"))
             publish_now()
             _sync_helpers()
@@ -256,7 +260,12 @@ def main() -> None:
     global publisher  # noqa: PLW0603
 
     # Startup-Diagnose
-    _LOGGER.info("Urlaubsplaner v%s startet", VERSION)
+    _LOGGER.info("Urlaubsplaner v%s startet – Systemzeit: %s", VERSION, datetime.now().strftime("%d.%m.%Y %H:%M:%S"))
+    try:
+        import time as _t
+        _LOGGER.info("Zeitzone des Containers: %s", _t.tzname)
+    except Exception:
+        pass
     if ha_api.available():
         _LOGGER.info("HA-API verfügbar (SUPERVISOR_TOKEN gesetzt) – Helfer-Entitäten werden geschaltet")
     else:
