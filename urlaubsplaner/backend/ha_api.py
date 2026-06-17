@@ -1,9 +1,4 @@
-"""Zugriff auf die Home-Assistant-API über den Supervisor-Proxy.
-
-Wird genutzt, um optional eine bestehende Helfer-Entität (z. B. ein
-input_boolean) synchron zu „Urlaub heute" zu schalten.
-Benötigt `homeassistant_api: true` in der config.yaml des Add-ons.
-"""
+"""Zugriff auf die Home-Assistant-API über den Supervisor-Proxy."""
 from __future__ import annotations
 
 import json
@@ -16,6 +11,9 @@ _LOGGER = logging.getLogger(__name__)
 
 API_BASE = "http://supervisor/core/api"
 TIMEOUT = 10
+
+ONOFF_DOMAINS = ("input_boolean", "switch", "light", "fan", "automation", "script", "climate")
+SELECT_DOMAINS = ("input_select", "select")
 
 
 def _token() -> str:
@@ -42,7 +40,6 @@ def _request(method: str, path: str, payload: dict | None = None) -> dict | list
 
 
 def get_state(entity_id: str) -> str | None:
-    """Aktuellen Zustand einer Entität lesen (None bei Fehler/unbekannt)."""
     try:
         data = _request("GET", f"/states/{entity_id}")
         return data.get("state") if isinstance(data, dict) else None
@@ -58,61 +55,50 @@ def get_state(entity_id: str) -> str | None:
 
 
 def set_onoff(entity_id: str, on: bool) -> bool:
-    """Entität ein-/ausschalten (nur wenn der Zustand abweicht).
+    """Entität direkt schalten – OHNE vorherigen State-Check.
 
-    Nutzt den domain-spezifischen Service (input_boolean.turn_on etc.)
-    als Primär-Methode und fällt auf homeassistant.turn_on zurück.
+    Der State-Check war fehleranfällig (Race Conditions, falsche States).
+    HA ignoriert redundante Calls ohnehin.
     """
     if not available():
-        _LOGGER.warning("Kein SUPERVISOR_TOKEN – Helfer-Entität kann nicht geschaltet werden")
+        _LOGGER.warning("Kein SUPERVISOR_TOKEN – %s kann nicht geschaltet werden", entity_id)
         return False
-    desired = "on" if on else "off"
-    current = get_state(entity_id)
-    if current == desired:
-        _LOGGER.debug("Helfer-Entität %s ist bereits %s", entity_id, desired)
-        return True
     domain = entity_id.split(".", 1)[0]
     service = "turn_on" if on else "turn_off"
-    # Erst domain-spezifisch versuchen, dann homeassistant-Fallback
+    state_str = "on" if on else "off"
+    # Erst domain-spezifisch, dann homeassistant-Fallback
     for svc_domain in (domain, "homeassistant"):
         try:
             _request("POST", f"/services/{svc_domain}/{service}", {"entity_id": entity_id})
-            _LOGGER.info("Helfer-Entität %s → %s (via %s.%s)", entity_id, desired, svc_domain, service)
+            _LOGGER.info("Helfer %s → %s (via %s.%s)", entity_id, state_str, svc_domain, service)
             return True
         except Exception as err:  # noqa: BLE001
             _LOGGER.debug("%s.%s für %s fehlgeschlagen: %s", svc_domain, service, entity_id, err)
-    _LOGGER.warning("Helfer-Entität %s konnte nicht geschaltet werden", entity_id)
+    _LOGGER.warning("Helfer %s konnte nicht auf %s geschaltet werden", entity_id, state_str)
     return False
 
 
 def select_option(entity_id: str, option: str) -> bool:
-    """Option einer input_select-/select-Entität setzen (nur wenn abweichend)."""
+    """Option einer input_select-/select-Entität setzen – OHNE vorherigen State-Check."""
     if not available():
-        _LOGGER.warning("Kein SUPERVISOR_TOKEN – Helfer-Entität kann nicht geschaltet werden")
+        _LOGGER.warning("Kein SUPERVISOR_TOKEN – %s kann nicht gesetzt werden", entity_id)
         return False
-    if get_state(entity_id) == option:
-        return True
-    domain = "input_select" if entity_id.startswith("input_select.") else "select"
+    domain = entity_id.split(".", 1)[0]
+    if domain not in SELECT_DOMAINS:
+        _LOGGER.warning("select_option: %s ist kein Select (Domain: %s)", entity_id, domain)
+        return False
     try:
-        _request(
-            "POST",
-            f"/services/{domain}/select_option",
-            {"entity_id": entity_id, "option": option},
-        )
-        _LOGGER.info("Helfer-Entität %s → Option %r", entity_id, option)
+        _request("POST", f"/services/{domain}/select_option",
+                 {"entity_id": entity_id, "option": option})
+        _LOGGER.info("Helfer %s → Option %r", entity_id, option)
         return True
     except Exception as err:  # noqa: BLE001
         _LOGGER.warning("Option für %s konnte nicht gesetzt werden: %s", entity_id, err)
         return False
 
 
-# Domains, die sich sinnvoll per homeassistant.turn_on/turn_off schalten lassen
-ONOFF_DOMAINS = ("input_boolean", "switch", "light", "fan", "automation", "script", "climate")
-SELECT_DOMAINS = ("input_select", "select")
-
-
 def list_entities() -> list[dict]:
-    """Schaltbare Entitäten und Selects (mit Optionen) aus HA laden."""
+    """Schaltbare Entitäten und Selects mit Optionen aus HA laden."""
     if not available():
         return []
     try:

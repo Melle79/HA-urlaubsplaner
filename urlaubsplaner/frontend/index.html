@@ -186,8 +186,25 @@ async function loadStatus(){
     for (const e of st.entities){
       const c = document.createElement("code");
       c.textContent = e.entity_id; c.title = e.name;
-      c.onclick = () => navigator.clipboard.writeText(e.entity_id)
-        .then(()=>{c.classList.add("copied"); setTimeout(()=>c.classList.remove("copied"),900);});
+      c.onclick = () => {
+        const copy = () => {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            return navigator.clipboard.writeText(e.entity_id);
+          }
+          // Fallback für Ingress ohne https
+          const ta = document.createElement("textarea");
+          ta.value = e.entity_id; ta.style.position = "fixed"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.focus(); ta.select();
+          document.execCommand("copy"); document.body.removeChild(ta);
+          return Promise.resolve();
+        };
+        copy().then(() => {
+          c.classList.add("copied"); setTimeout(() => c.classList.remove("copied"), 900);
+        }).catch(() => {
+          // Zeige Entity-ID im Tooltip als Fallback
+          c.title = e.entity_id + " (bitte manuell kopieren)";
+        });
+      };
       $("entlist").appendChild(c);
     }
   }catch(e){ $("mqtt-text").textContent = "Status nicht erreichbar"; }
@@ -362,14 +379,15 @@ function renderOptField(wrapId, inputId, options, value, allowEmpty){
 function syncFormToEntity(optU, optN){
   const eid = $("h-entity").value.trim();
   const known = findEntity(eid);
-  const isSel = known ? known.options !== null : isSelectId(eid);
+  // Nur echte Selects (options ist Array, nicht null) -> "Option setzen"
+  const isSel = known ? Array.isArray(known.options) : isSelectId(eid);
   const act = $("h-action");
   act.querySelector('[value="ein"]').disabled = isSel;
   act.querySelector('[value="aus"]').disabled = isSel;
   act.querySelector('[value="option"]').disabled = eid !== "" && !isSel;
   if (isSel) act.value = "option";
   else if (act.value === "option") act.value = "ein";
-  const opts = (known && known.options) ? known.options : null;
+  const opts = (known && Array.isArray(known.options) && known.options.length) ? known.options : null;
   renderOptField("h-opt-u-wrap", "h-opt-u", opts, optU, false);
   renderOptField("h-opt-n-wrap", "h-opt-n", opts, optN, true);
   toggleOptFields();

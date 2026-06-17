@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.7
+
+- Fix: `input_boolean` war im Helfer-Formular nicht wählbar (wurde fälschlicherweise als Select erkannt)
+- Fix: `set_onoff` ohne State-Check – verhindert sporadische Nicht-Schaltungen durch Race Conditions
+- Fix: `select_option` prüft Domain korrekt, kein State-Check mehr
+- Fix: Clipboard-Fallback für Ingress-Panel (kein https-Kontext)
+
 ## 1.4.6
 
 - Fix: `set_onoff` nutzt jetzt domain-spezifische Services (z. B. `input_boolean.turn_on`)
