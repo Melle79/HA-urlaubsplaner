@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.3
+
+- Fix: Helfer-Entitäten wurden nach Urlaubsende (Endzeit) nicht zurückgeschaltet
+- `next_wakeup` liefert die Endzeit jetzt als Weckpunkt (`>= now` statt `> now`),
+  damit der Scheduler genau zur Ankunftszeit aufwacht und die Helfer abschaltet
+
 ## 1.4.2
 
 - Fix: `__import__("datetime").time` im Scheduler durch sauberen `dt_time`-Import ersetzt

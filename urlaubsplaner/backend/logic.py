@@ -170,11 +170,11 @@ def next_wakeup(urlaube: list[dict]) -> datetime | None:
                 dt = datetime.combine(start_d, t)
                 if dt > now:
                     candidates.append(dt)
-        # End-Zeit: relevant wenn Endtag heute oder morgen
+        # End-Zeit: >= now damit die Endzeit selbst als Weckpunkt gilt
         if u.get("end_time") and end_d >= today:
             t = _parse_time(u["end_time"])
             if t:
                 dt = datetime.combine(end_d, t)
-                if dt > now:
+                if dt >= now:  # >= statt >: Endzeit selbst ist Weckpunkt
                     candidates.append(dt)
     return min(candidates) if candidates else None
