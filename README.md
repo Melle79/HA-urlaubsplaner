@@ -23,6 +23,7 @@ Home Assistant Add-on-Repository mit dem **Urlaubsplaner**: Urlaubszeiträume be
 |---|---|---|
 | Urlaub heute | binary_sensor | `datum`, `bezeichnung`, `beginn`, `ende`, `dauer_tage`, `rest_tage` |
 | Urlaub morgen | binary_sensor | `datum`, `bezeichnung`, `beginn`, `ende`, `dauer_tage`, `rest_tage` |
+| Urlaub gerade vorbei | binary_sensor | `datum`, `bezeichnung`, `ende`, `vor_minuten` (ON für 60 Min. nach Urlaubsende) |
 | Nächster Urlaub | sensor | `bezeichnung`, `beginn`, `ende`, `in_tagen`, `dauer_tage`, `aktuell_urlaub`, `urlaube` (alle Zeiträume), `vorschau` (14-Tage-Streifen) |
 
 Entity-IDs: `binary_sensor.urlaub_heute`, `binary_sensor.urlaub_morgen`, `sensor.naechster_urlaub`.

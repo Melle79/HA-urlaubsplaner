@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.4
+
+- **Neuer Auslöser „Urlaub gerade vorbei"** in den Helfer-Regeln: schaltet Entitäten
+  in den 60 Minuten nach Urlaubsende (z. B. Willkommen-zu-Hause-Automation, Hausmodus
+  zurück auf „Zuhause", Heizung wieder hochfahren)
+- Neue Entität `binary_sensor.urlaub_gerade_vorbei` via MQTT Discovery
+  (ON für 60 Min. nach Urlaubsende, Attribute: `bezeichnung`, `ende`, `vor_minuten`)
+
 ## 1.4.3
 
 - Fix: Helfer-Entitäten wurden nach Urlaubsende (Endzeit) nicht zurückgeschaltet

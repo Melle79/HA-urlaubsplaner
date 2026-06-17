@@ -131,6 +131,7 @@
         <select id="h-trigger">
           <option value="heute">Urlaub heute</option>
           <option value="morgen">Urlaub morgen</option>
+          <option value="vorbei">Urlaub gerade vorbei</option>
         </select></div>
       <div class="field" style="flex:0 1 220px"><label for="h-action">Aktion</label>
         <select id="h-action">
@@ -285,7 +286,7 @@ setInterval(loadStatus, 30000);
 // ---------- Mitgeschaltete Entitäten (Helfer-Regeln) ----------
 let editHelperId = null;
 let entityCache = [];   // {entity_id, name, options|null}
-const TRIGGER_TXT = {heute: "Urlaub heute", morgen: "Urlaub morgen"};
+const TRIGGER_TXT = {heute: "Urlaub heute", morgen: "Urlaub morgen", vorbei: "Urlaub gerade vorbei"};
 
 function actionTxt(h){
   if (h.action === "ein") return "Im Urlaub einschalten";

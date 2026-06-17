@@ -48,7 +48,9 @@ def _sync_helper(states: dict) -> None:
         _LOGGER.warning("SUPERVISOR_TOKEN fehlt – Helfer-Entitäten können nicht geschaltet werden")
         return
     for rule in helpers:
-        key = "urlaub_morgen" if rule.get("trigger") == "morgen" else "urlaub_heute"
+        key = ("urlaub_morgen" if rule.get("trigger") == "morgen"
+               else "urlaub_gerade_vorbei" if rule.get("trigger") == "vorbei"
+               else "urlaub_heute")
         active = states[key]["state"] == "ON"
         action = rule.get("action", "ein")
         entity = rule["entity"]

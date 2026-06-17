@@ -23,9 +23,10 @@ DEVICE_ID = "urlaubsplaner"
 
 # (component, key, anzeigename, icon)
 ENTITY_DEFS = [
-    ("binary_sensor", "urlaub_heute", "Urlaub heute", "mdi:beach"),
-    ("binary_sensor", "urlaub_morgen", "Urlaub morgen", "mdi:beach"),
-    ("sensor", "naechster_urlaub", "Nächster Urlaub", "mdi:airplane-takeoff"),
+    ("binary_sensor", "urlaub_heute",        "Urlaub heute",        "mdi:beach"),
+    ("binary_sensor", "urlaub_morgen",       "Urlaub morgen",       "mdi:beach"),
+    ("binary_sensor", "urlaub_gerade_vorbei","Urlaub gerade vorbei","mdi:airplane-landing"),
+    ("sensor",        "naechster_urlaub",    "Nächster Urlaub",     "mdi:airplane-takeoff"),
 ]
 
 

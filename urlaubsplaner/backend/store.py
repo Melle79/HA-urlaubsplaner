@@ -115,7 +115,7 @@ import re as _re
 SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 _ENTITY_RE = _re.compile(r"^[a-z_]+\.[a-z0-9_]+$")
 
-TRIGGERS = ("heute", "morgen")
+TRIGGERS = ("heute", "morgen", "vorbei")
 ACTIONS = ("ein", "aus", "option")
 
 
@@ -125,7 +125,7 @@ def _validate_rule(data: dict) -> dict:
         raise ValidationError("Ungültige Entity-ID (erwartet z. B. input_boolean.urlaub)")
     trigger = str(data.get("trigger", "heute")).strip().lower()
     if trigger not in TRIGGERS:
-        raise ValidationError("Ungültiger Auslöser (heute/morgen)")
+        raise ValidationError("Ungültiger Auslöser (heute/morgen/vorbei)")
     action = str(data.get("action", "ein")).strip().lower()
     if action not in ACTIONS:
         raise ValidationError("Ungültige Aktion (ein/aus/option)")

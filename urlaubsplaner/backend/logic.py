@@ -108,6 +108,20 @@ def _day_state(dt: datetime, urlaube: list[dict]) -> dict:
     return {"state": "ON" if period else "OFF", "attributes": attrs}
 
 
+def _just_ended(urlaube: list[dict], now: datetime, window_minutes: int = 60) -> dict | None:
+    """Zeitraum liefern, der innerhalb der letzten `window_minutes` geendet hat."""
+    for u in urlaube:
+        try:
+            end_d = date.fromisoformat(u["end"])
+        except (KeyError, ValueError):
+            continue
+        end_t = _parse_time(u.get("end_time"))
+        end_dt = datetime.combine(end_d, end_t if end_t else time(23, 59))
+        if timedelta(0) <= (now - end_dt) <= timedelta(minutes=window_minutes):
+            return u
+    return None
+
+
 def build_states(urlaube: list[dict]) -> dict:
     """Alle Entitätszustände berechnen."""
     now = datetime.now().replace(second=0, microsecond=0)
@@ -141,9 +155,25 @@ def build_states(urlaube: list[dict]) -> dict:
         nxt_attrs["aktuell_urlaub"] = False
         nxt_state = "Keiner geplant"
 
+    # Urlaub gerade vorbei (innerhalb der letzten 60 Minuten nach Urlaubsende)
+    ended = _just_ended(urlaube, now)
+    vorbei_attrs: dict = {"datum": now.date().isoformat()}
+    if ended:
+        end_d = date.fromisoformat(ended["end"])
+        end_t = _parse_time(ended.get("end_time"))
+        end_dt = datetime.combine(end_d, end_t if end_t else time(23, 59))
+        vorbei_attrs.update({
+            "bezeichnung": ended.get("label", "Urlaub"),
+            "ende": ended["end"],
+            "vor_minuten": int((now - end_dt).total_seconds() / 60),
+        })
+        if ended.get("end_time"):
+            vorbei_attrs["endzeit"] = ended["end_time"]
+
     return {
         "urlaub_heute": _day_state(now, urlaube),
         "urlaub_morgen": _day_state(tomorrow_dt, urlaube),
+        "urlaub_gerade_vorbei": {"state": "ON" if ended else "OFF", "attributes": vorbei_attrs},
         "naechster_urlaub": {"state": nxt_state, "attributes": nxt_attrs},
     }
 
