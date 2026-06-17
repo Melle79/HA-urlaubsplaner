@@ -5,7 +5,7 @@ import logging
 import os
 import threading
 import time as time_module
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time as dt_time, timedelta
 
 from flask import Flask, jsonify, request, send_from_directory
 
@@ -41,11 +41,19 @@ def publish_now() -> None:
 
 def _sync_helper(states: dict) -> None:
     """Helfer-Regeln anwenden: Entitäten je nach Auslöser und Aktion schalten."""
-    for rule in store.load_helpers():
+    helpers = store.load_helpers()
+    if not helpers:
+        return
+    if not ha_api.available():
+        _LOGGER.warning("SUPERVISOR_TOKEN fehlt – Helfer-Entitäten können nicht geschaltet werden")
+        return
+    for rule in helpers:
         key = "urlaub_morgen" if rule.get("trigger") == "morgen" else "urlaub_heute"
         active = states[key]["state"] == "ON"
         action = rule.get("action", "ein")
         entity = rule["entity"]
+        _LOGGER.info("Helfer-Sync: %s | Auslöser=%s (%s) | Aktion=%s",
+                     entity, key, "ON" if active else "OFF", action)
         if action == "ein":
             ha_api.set_onoff(entity, active)
         elif action == "aus":
@@ -54,6 +62,8 @@ def _sync_helper(states: dict) -> None:
             target = rule.get("option_urlaub") if active else rule.get("option_normal")
             if target:
                 ha_api.select_option(entity, target)
+            else:
+                _LOGGER.info("Helfer-Sync: %s – keine Option für diesen Zustand, übersprungen", entity)
 
 
 # ---------------------------------------------------------------- MQTT-Commands
@@ -107,9 +117,13 @@ def _scheduler() -> None:
             urlaube = store.load_urlaube()
             wakeup = logic.next_wakeup(urlaube)
             now = datetime.now()
-            midnight = datetime.combine(date.today() + timedelta(days=1), __import__("datetime").time(0, 0, 5))
+            midnight = datetime.combine(date.today() + timedelta(days=1), dt_time(0, 0, 5))
             next_tick = min(wakeup, midnight) if wakeup else midnight
             sleep_secs = max(10, (next_tick - now).total_seconds())
+            _LOGGER.info(
+                "Scheduler: nächster Weckzeitpunkt %s (in %.0f s)",
+                next_tick.strftime("%d.%m. %H:%M"), sleep_secs,
+            )
             time_module.sleep(sleep_secs)
             if date.today() != last_day:
                 last_day = date.today()

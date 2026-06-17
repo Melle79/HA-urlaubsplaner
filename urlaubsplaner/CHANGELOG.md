@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.2
+
+- Fix: `__import__("datetime").time` im Scheduler durch sauberen `dt_time`-Import ersetzt
+- Besseres Diagnose-Logging: Scheduler zeigt nächsten Weckzeitpunkt, `_sync_helper` loggt
+  jeden Schaltvorgang inkl. Auslöser und Zustand
+- Fix: doppelter `select_option`-Aufruf in `_sync_helper` entfernt
+- SUPERVISOR_TOKEN-Fehler wird jetzt einmalig geloggt statt pro Entität
+
 ## 1.4.0
 
 - **Optionale Start- und Endzeit** pro Urlaubszeitraum: Abfahrtszeit (Urlaub beginnt erst dann)
