@@ -1,5 +1,5 @@
 name: "Urlaubsplaner"
-version: "1.4.7"
+version: "1.4.8"
 slug: "urlaubsplaner"
 description: "Urlaubszeiträume verwalten – Entitäten 'Urlaub heute' und 'Urlaub morgen' via MQTT, Web-UI mit Kalender"
 url: "https://github.com/Melle79/HA-urlaubsplaner"

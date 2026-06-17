@@ -28,19 +28,29 @@ _publish_lock = threading.Lock()
 
 # ---------------------------------------------------------------- Publizieren
 
-def publish_now() -> None:
-    """Zustände berechnen, via MQTT publizieren und Helfer-Entität schalten."""
+def publish_now(force_off: bool = False) -> None:
+    """Zustände berechnen, via MQTT publizieren und Helfer-Entitäten schalten.
+
+    force_off=False (Standard): beim Speichern/Ändern – schaltet nur ein, nie vorzeitig aus.
+    force_off=True: vom Scheduler – schaltet auch aus wenn Urlaub vorbei.
+    """
     with _publish_lock:
         urlaube = store.load_urlaube()
         states = logic.build_states(urlaube)
         if publisher is not None:
             publisher.publish_discovery()
             publisher.publish_states(states)
-        _sync_helper(states)
+        _sync_helper(states, force_off=force_off)
 
 
-def _sync_helper(states: dict) -> None:
-    """Helfer-Regeln anwenden: Entitäten je nach Auslöser und Aktion schalten."""
+def _sync_helper(states: dict, force_off: bool = False) -> None:
+    """Helfer-Regeln anwenden: Entitäten je nach Auslöser und Aktion schalten.
+
+    force_off=False (Standard beim Speichern/Ändern): schaltet nur EIN wenn aktiv,
+    schaltet aber nicht AUS wenn noch nicht aktiv – damit ein manuell gesetzter
+    Zustand nicht vorzeitig überschrieben wird.
+    force_off=True (Scheduler/Datumswechsel/Urlaubsende): schaltet auch aus.
+    """
     helpers = store.load_helpers()
     if not helpers:
         return
@@ -54,18 +64,25 @@ def _sync_helper(states: dict) -> None:
         active = states[key]["state"] == "ON"
         action = rule.get("action", "ein")
         entity = rule["entity"]
-        _LOGGER.info("Helfer-Sync: %s | Auslöser=%s (%s) | Aktion=%s",
-                     entity, key, "ON" if active else "OFF", action)
+        _LOGGER.info("Helfer-Sync: %s | Auslöser=%s (%s) | Aktion=%s | force_off=%s",
+                     entity, key, "ON" if active else "OFF", action, force_off)
         if action == "ein":
-            ha_api.set_onoff(entity, active)
+            if active:
+                ha_api.set_onoff(entity, True)
+            elif force_off:
+                ha_api.set_onoff(entity, False)
         elif action == "aus":
-            ha_api.set_onoff(entity, not active)
+            if active:
+                ha_api.set_onoff(entity, False)
+            elif force_off:
+                ha_api.set_onoff(entity, True)
         elif action == "option":
             target = rule.get("option_urlaub") if active else rule.get("option_normal")
-            if target:
+            if active:
+                if target:
+                    ha_api.select_option(entity, target)
+            elif force_off and target:
                 ha_api.select_option(entity, target)
-            else:
-                _LOGGER.info("Helfer-Sync: %s – keine Option für diesen Zustand, übersprungen", entity)
 
 
 # ---------------------------------------------------------------- MQTT-Commands
@@ -133,13 +150,10 @@ def _scheduler() -> None:
             else:
                 _LOGGER.info("Uhrzeit-Trigger %s – Zustände werden neu berechnet",
                              next_tick.strftime("%H:%M"))
-            publish_now()
+            publish_now(force_off=True)
         except Exception as err:  # noqa: BLE001
             _LOGGER.error("Scheduler-Fehler: %s", err)
             time_module.sleep(60)
-
-
-# ---------------------------------------------------------------- Routen
 
 @app.route("/")
 def index():

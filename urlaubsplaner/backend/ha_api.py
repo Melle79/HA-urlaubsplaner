@@ -55,26 +55,31 @@ def get_state(entity_id: str) -> str | None:
 
 
 def set_onoff(entity_id: str, on: bool) -> bool:
-    """Entität direkt schalten – OHNE vorherigen State-Check.
+    """Entität schalten.
 
-    Der State-Check war fehleranfällig (Race Conditions, falsche States).
-    HA ignoriert redundante Calls ohnehin.
+    Einschalten: immer direkt – kein State-Check (verhindert Race Conditions).
+    Ausschalten: nur wenn die Entität aktuell ON ist – damit eine manuell
+    ausgeschaltete Entität nicht unnötig „ausgeschaltet" wird und dadurch
+    überraschend wirkt.
     """
     if not available():
         _LOGGER.warning("Kein SUPERVISOR_TOKEN – %s kann nicht geschaltet werden", entity_id)
         return False
+    if not on:
+        current = get_state(entity_id)
+        if current == "off" or current is None:
+            _LOGGER.debug("Helfer %s ist bereits off – kein Schaltvorgang", entity_id)
+            return True
     domain = entity_id.split(".", 1)[0]
     service = "turn_on" if on else "turn_off"
-    state_str = "on" if on else "off"
-    # Erst domain-spezifisch, dann homeassistant-Fallback
     for svc_domain in (domain, "homeassistant"):
         try:
             _request("POST", f"/services/{svc_domain}/{service}", {"entity_id": entity_id})
-            _LOGGER.info("Helfer %s → %s (via %s.%s)", entity_id, state_str, svc_domain, service)
+            _LOGGER.info("Helfer %s → %s (via %s.%s)", entity_id, "on" if on else "off", svc_domain, service)
             return True
         except Exception as err:  # noqa: BLE001
             _LOGGER.debug("%s.%s für %s fehlgeschlagen: %s", svc_domain, service, entity_id, err)
-    _LOGGER.warning("Helfer %s konnte nicht auf %s geschaltet werden", entity_id, state_str)
+    _LOGGER.warning("Helfer %s konnte nicht geschaltet werden", entity_id)
     return False
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.8
+
+- Fix: Helfer werden beim Speichern eines Urlaubs nicht mehr vorzeitig geschaltet
+  (`force_off=False` beim Speichern/Ändern, `force_off=True` nur vom Scheduler)
+- Beim Speichern: Helfer werden nur eingeschaltet wenn der Urlaub gerade aktiv ist,
+  nie vorzeitig ausgeschaltet
+- Der Scheduler schaltet weiterhin zu exakt den konfigurierten Uhrzeiten aus
+
 ## 1.4.7
 
 - Fix: `input_boolean` war im Helfer-Formular nicht wählbar (wurde fälschlicherweise als Select erkannt)
