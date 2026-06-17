@@ -28,35 +28,30 @@ _publish_lock = threading.Lock()
 
 # ---------------------------------------------------------------- Publizieren
 
-def publish_now(force_off: bool = False) -> None:
-    """Zustände berechnen, via MQTT publizieren und Helfer-Entitäten schalten.
-
-    force_off=False (Standard): beim Speichern/Ändern – schaltet nur ein, nie vorzeitig aus.
-    force_off=True: vom Scheduler – schaltet auch aus wenn Urlaub vorbei.
-    """
+def publish_now() -> None:
+    """Zustände berechnen und via MQTT publizieren. Schaltet keine Helfer."""
     with _publish_lock:
         urlaube = store.load_urlaube()
         states = logic.build_states(urlaube)
         if publisher is not None:
             publisher.publish_discovery()
             publisher.publish_states(states)
-        _sync_helper(states, force_off=force_off)
 
 
-def _sync_helper(states: dict, force_off: bool = False) -> None:
-    """Helfer-Regeln anwenden: Entitäten je nach Auslöser und Aktion schalten.
+def _sync_helpers() -> None:
+    """Helfer-Regeln anwenden – wird NUR vom Scheduler aufgerufen.
 
-    force_off=False (Standard beim Speichern/Ändern): schaltet nur EIN wenn aktiv,
-    schaltet aber nicht AUS wenn noch nicht aktiv – damit ein manuell gesetzter
-    Zustand nicht vorzeitig überschrieben wird.
-    force_off=True (Scheduler/Datumswechsel/Urlaubsende): schaltet auch aus.
+    Schaltet Entitäten basierend auf dem aktuellen Zustand der Entitäten:
+    aktiv → einschalten/Option setzen, inaktiv → ausschalten/zurücksetzen.
     """
     helpers = store.load_helpers()
     if not helpers:
         return
     if not ha_api.available():
-        _LOGGER.warning("SUPERVISOR_TOKEN fehlt – Helfer-Entitäten können nicht geschaltet werden")
+        _LOGGER.warning("SUPERVISOR_TOKEN fehlt – Helfer können nicht geschaltet werden")
         return
+    urlaube = store.load_urlaube()
+    states = logic.build_states(urlaube)
     for rule in helpers:
         key = ("urlaub_morgen" if rule.get("trigger") == "morgen"
                else "urlaub_gerade_vorbei" if rule.get("trigger") == "vorbei"
@@ -64,25 +59,17 @@ def _sync_helper(states: dict, force_off: bool = False) -> None:
         active = states[key]["state"] == "ON"
         action = rule.get("action", "ein")
         entity = rule["entity"]
-        _LOGGER.info("Helfer-Sync: %s | Auslöser=%s (%s) | Aktion=%s | force_off=%s",
-                     entity, key, "ON" if active else "OFF", action, force_off)
+        _LOGGER.info("Helfer-Sync: %s | %s=%s | Aktion=%s", entity, key, "ON" if active else "OFF", action)
         if action == "ein":
-            if active:
-                ha_api.set_onoff(entity, True)
-            elif force_off:
-                ha_api.set_onoff(entity, False)
+            ha_api.set_onoff(entity, active)
         elif action == "aus":
-            if active:
-                ha_api.set_onoff(entity, False)
-            elif force_off:
-                ha_api.set_onoff(entity, True)
+            ha_api.set_onoff(entity, not active)
         elif action == "option":
             target = rule.get("option_urlaub") if active else rule.get("option_normal")
-            if active:
-                if target:
-                    ha_api.select_option(entity, target)
-            elif force_off and target:
+            if target:
                 ha_api.select_option(entity, target)
+            else:
+                _LOGGER.info("Helfer %s – keine Option für diesen Zustand, übersprungen", entity)
 
 
 # ---------------------------------------------------------------- MQTT-Commands
@@ -150,7 +137,8 @@ def _scheduler() -> None:
             else:
                 _LOGGER.info("Uhrzeit-Trigger %s – Zustände werden neu berechnet",
                              next_tick.strftime("%H:%M"))
-            publish_now(force_off=True)
+            publish_now()
+            _sync_helpers()
         except Exception as err:  # noqa: BLE001
             _LOGGER.error("Scheduler-Fehler: %s", err)
             time_module.sleep(60)

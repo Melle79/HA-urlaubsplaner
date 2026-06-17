@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.9
+
+- Komplette Trennung: `publish_now()` schaltet **niemals** Helfer-Entitäten
+- Helfer werden **ausschließlich vom Scheduler** geschaltet:
+  ohne Uhrzeit um Mitternacht, mit Uhrzeit exakt zur konfigurierten Zeit
+- Kein vorzeitiges Schalten mehr beim Speichern, Ändern oder Löschen
+
 ## 1.4.8
 
 - Fix: Helfer werden beim Speichern eines Urlaubs nicht mehr vorzeitig geschaltet
