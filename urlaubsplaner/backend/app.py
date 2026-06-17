@@ -24,18 +24,26 @@ app = Flask(__name__, static_folder="../frontend", static_url_path="")
 
 publisher: Publisher | None = None
 _publish_lock = threading.Lock()
+_scheduler_event = threading.Event()  # wird gesetzt wenn sich Urlaube ändern -> Scheduler wacht auf
+
+
+def _interrupt_scheduler() -> None:
+    """Scheduler-Sleep unterbrechen damit er den neuen Weckpunkt berechnet."""
+    _scheduler_event.set()
 
 
 # ---------------------------------------------------------------- Publizieren
 
 def publish_now() -> None:
-    """Zustände berechnen und via MQTT publizieren. Schaltet keine Helfer."""
+    """Zustände berechnen und via MQTT publizieren. Schaltet keine Helfer.
+    Unterbricht den Scheduler damit er den Weckpunkt neu berechnet."""
     with _publish_lock:
         urlaube = store.load_urlaube()
         states = logic.build_states(urlaube)
         if publisher is not None:
             publisher.publish_discovery()
             publisher.publish_states(states)
+    _interrupt_scheduler()
 
 
 def _sync_helpers() -> None:
@@ -113,17 +121,14 @@ def handle_command(payload: dict) -> None:
 # ---------------------------------------------------------------- Scheduler
 
 def _scheduler() -> None:
-    """Helfer zu relevanten Zeitpunkten schalten:
-    - Einmalig beim Start (für laufende Urlaube)
-    - täglich um Mitternacht
-    - zur start_time / end_time wenn konfiguriert
-    """
+    """Helfer zu relevanten Zeitpunkten schalten."""
     _LOGGER.info("Scheduler gestartet – einmaliger Sync beim Start")
-    _sync_helpers()  # sofort beim Start: laufende Urlaube berücksichtigen
+    _sync_helpers()
 
     last_day = date.today()
     while True:
         try:
+            _scheduler_event.clear()
             urlaube = store.load_urlaube()
             wakeup = logic.next_wakeup(urlaube)
             now = datetime.now()
@@ -134,7 +139,10 @@ def _scheduler() -> None:
                 "Scheduler: nächster Weckzeitpunkt %s (in %.0f s / %.1f h)",
                 next_tick.strftime("%d.%m. %H:%M"), sleep_secs, sleep_secs / 3600,
             )
-            time_module.sleep(sleep_secs)
+            interrupted = _scheduler_event.wait(timeout=sleep_secs)
+            if interrupted:
+                _LOGGER.info("Scheduler: Urlaub geändert – Weckpunkt wird neu berechnet")
+                continue  # sofort neu berechnen, noch nicht schalten
             if date.today() != last_day:
                 last_day = date.today()
                 _LOGGER.info("Datumswechsel – Helfer werden synchronisiert")

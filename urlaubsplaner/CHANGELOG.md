@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.2
+
+- Fix: Scheduler schläft nach dem Speichern eines neuen Urlaubs nicht mehr bis Mitternacht
+  weiter – `publish_now()` unterbricht jetzt den Sleep und der Scheduler berechnet
+  den Weckpunkt sofort neu (z. B. "gespeichert um 18:10, Urlaub startet 18:12")
+- Technisch: `threading.Event.wait()` statt `time.sleep()` im Scheduler
+
 ## 1.5.1
 
 - Neue Route `GET /api/debug`: zeigt Systemzeit, Zeitzone, HA-API-Status,
