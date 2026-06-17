@@ -135,8 +135,8 @@
         </select></div>
       <div class="field" style="flex:0 1 220px"><label for="h-action">Aktion</label>
         <select id="h-action">
-          <option value="ein">Im Urlaub einschalten</option>
-          <option value="aus">Im Urlaub ausschalten</option>
+          <option value="ein">Einschalten</option>
+          <option value="aus">Ausschalten</option>
           <option value="option">Option setzen (input_select)</option>
         </select></div>
       <div class="field optfield" hidden><label for="h-opt-u">Option im Urlaub</label>
@@ -288,9 +288,24 @@ let editHelperId = null;
 let entityCache = [];   // {entity_id, name, options|null}
 const TRIGGER_TXT = {heute: "Urlaub heute", morgen: "Urlaub morgen", vorbei: "Urlaub gerade vorbei"};
 
+const ACTION_LABELS = {
+  heute:  {ein: "Im Urlaub einschalten",      aus: "Im Urlaub ausschalten"},
+  morgen: {ein: "Am Vortag einschalten",       aus: "Am Vortag ausschalten"},
+  vorbei: {ein: "Nach Urlaub einschalten",     aus: "Nach Urlaub ausschalten"},
+};
+
+function updateActionLabels(){
+  const trigger = $("h-trigger").value;
+  const labels = ACTION_LABELS[trigger] || ACTION_LABELS.heute;
+  $("h-action").querySelector('[value=ein]').textContent = labels.ein;
+  $("h-action").querySelector('[value=aus]').textContent = labels.aus;
+}
+$("h-trigger").addEventListener("change", updateActionLabels);
+
 function actionTxt(h){
-  if (h.action === "ein") return "Im Urlaub einschalten";
-  if (h.action === "aus") return "Im Urlaub ausschalten";
+  const labels = ACTION_LABELS[h.trigger] || ACTION_LABELS.heute;
+  if (h.action === "ein") return labels.ein;
+  if (h.action === "aus") return labels.aus;
   let t = `Option „${h.option_urlaub}"`;
   if (h.option_normal) t += ` → danach „${h.option_normal}"`;
   return t;
@@ -405,6 +420,7 @@ function startEditHelper(h){
   editHelperId = h.id;
   $("h-entity").value = h.entity;
   $("h-trigger").value = h.trigger;
+  updateActionLabels();
   syncFormToEntity(h.option_urlaub || "", h.option_normal || "");
   $("h-action").value = h.action;
   toggleOptFields();
@@ -416,6 +432,7 @@ function resetHelperForm(){
   editHelperId = null;
   $("h-entity").value = "";
   $("h-trigger").value = "heute"; $("h-action").value = "ein";
+  updateActionLabels();
   syncFormToEntity();
   $("h-save").textContent = "Hinzufügen";
   $("h-cancel").hidden = true;

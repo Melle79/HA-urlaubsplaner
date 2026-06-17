@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.5
+
+- Aktions-Labels im Helfer-Formular passen sich dem Auslöser an:
+  heute → „Im Urlaub ein-/ausschalten", morgen → „Am Vortag ein-/ausschalten",
+  vorbei → „Nach Urlaub ein-/ausschalten"
+
 ## 1.4.4
 
 - **Neuer Auslöser „Urlaub gerade vorbei"** in den Helfer-Regeln: schaltet Entitäten
