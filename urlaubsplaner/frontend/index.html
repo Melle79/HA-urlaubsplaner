@@ -121,7 +121,14 @@
   </section>
 
   <section class="panel">
-    <h2>Mitgeschaltete Entitäten</h2>
+    <h2>Diagnose</h2>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="ghost" id="d-debug">Diagnose laden</button>
+      <button id="d-sync">Helfer jetzt synchronisieren</button>
+    </div>
+    <pre id="d-out" style="background:var(--surface2);border:1px solid var(--line);border-radius:8px;
+      padding:12px;font-size:.78rem;color:var(--text);overflow-x:auto;white-space:pre-wrap;display:none"></pre>
+  </section>
     <div class="cards" id="hlist"><div class="empty">Lade…</div></div>
     <div class="form-grid" style="margin-top:14px">
       <div class="field"><label for="h-entity">Entität (suchen oder Entity-ID eingeben)</label>
@@ -294,6 +301,26 @@ $("f-save").onclick = async () => {
     }
     resetForm(); refresh();
   } finally { $("f-save").disabled = false; }
+};
+
+$("d-debug").onclick = async () => {
+  const out = $("d-out");
+  out.style.display = "block";
+  out.textContent = "Lade…";
+  try {
+    const data = await (await fetch("api/debug")).json();
+    out.textContent = JSON.stringify(data, null, 2);
+  } catch(e) { out.textContent = "Fehler: " + e; }
+};
+$("d-sync").onclick = async () => {
+  const out = $("d-out");
+  out.style.display = "block";
+  out.textContent = "Synchronisiere…";
+  try {
+    await fetch("api/sync", {method:"POST"});
+    const data = await (await fetch("api/debug")).json();
+    out.textContent = "Sync ausgeführt:\n" + JSON.stringify(data, null, 2);
+  } catch(e) { out.textContent = "Fehler: " + e; }
 };
 
 function refresh(){ loadStatus(); loadList(); }

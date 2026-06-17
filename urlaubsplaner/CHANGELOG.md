@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.1
+
+- Neue Route `GET /api/debug`: zeigt Systemzeit, Zeitzone, HA-API-Status,
+  aktuelle Zustände und was geschaltet werden würde
+- Neue Route `POST /api/sync`: löst Helfer-Sync manuell aus
+- Web-UI: Diagnose-Panel mit Debug-Ausgabe und manuellem Sync-Button
+
 ## 1.5.0
 
 - Fix: Scheduler fährt beim Add-on-Start sofort `_sync_helpers()` aus,

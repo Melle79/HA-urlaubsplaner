@@ -165,6 +165,63 @@ def api_status():
     )
 
 
+@app.route("/api/debug")
+def api_debug():
+    """Diagnose: zeigt aktuellen Zustand, Helfer und was geschaltet werden würde."""
+    import time as _t
+    urlaube = store.load_urlaube()
+    helpers = store.load_helpers()
+    states = logic.build_states(urlaube)
+    wakeup = logic.next_wakeup(urlaube)
+    now = datetime.now()
+
+    result = {
+        "systemzeit": now.strftime("%d.%m.%Y %H:%M:%S"),
+        "zeitzone": list(getattr(_t, "tzname", ("?", "?"))),
+        "ha_api_verfuegbar": ha_api.available(),
+        "supervisor_token_gesetzt": bool(os.environ.get("SUPERVISOR_TOKEN")),
+        "naechster_weckpunkt": wakeup.strftime("%d.%m. %H:%M") if wakeup else "Mitternacht",
+        "urlaube": urlaube,
+        "states": {k: v["state"] for k, v in states.items()},
+        "helfer": helpers,
+        "was_wuerde_jetzt_geschaltet": [],
+    }
+
+    for rule in helpers:
+        key = ("urlaub_morgen" if rule.get("trigger") == "morgen"
+               else "urlaub_gerade_vorbei" if rule.get("trigger") == "vorbei"
+               else "urlaub_heute")
+        active = states[key]["state"] == "ON"
+        action = rule.get("action", "ein")
+        entity = rule["entity"]
+        if action == "ein":
+            soll = "ON" if active else "OFF"
+        elif action == "aus":
+            soll = "OFF" if active else "ON"
+        elif action == "option":
+            soll = rule.get("option_urlaub") if active else rule.get("option_normal") or "(nichts)"
+        else:
+            soll = "?"
+        result["was_wuerde_jetzt_geschaltet"].append({
+            "entity": entity,
+            "trigger": key,
+            "trigger_state": states[key]["state"],
+            "aktion": action,
+            "soll_zustand": soll,
+            "ha_api_ok": ha_api.available(),
+        })
+
+    return jsonify(result)
+
+
+@app.route("/api/sync", methods=["POST"])
+def api_sync():
+    """Helfer manuell synchronisieren (für Diagnosezwecke)."""
+    _LOGGER.info("Manueller Sync via Web-UI ausgelöst")
+    _sync_helpers()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/entities", methods=["GET"])
 def api_entities():
     return jsonify({"available": ha_api.available(), "entities": ha_api.list_entities()})
