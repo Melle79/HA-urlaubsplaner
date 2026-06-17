@@ -58,22 +58,31 @@ def get_state(entity_id: str) -> str | None:
 
 
 def set_onoff(entity_id: str, on: bool) -> bool:
-    """Entität ein-/ausschalten (nur wenn der Zustand abweicht)."""
+    """Entität ein-/ausschalten (nur wenn der Zustand abweicht).
+
+    Nutzt den domain-spezifischen Service (input_boolean.turn_on etc.)
+    als Primär-Methode und fällt auf homeassistant.turn_on zurück.
+    """
     if not available():
         _LOGGER.warning("Kein SUPERVISOR_TOKEN – Helfer-Entität kann nicht geschaltet werden")
         return False
     desired = "on" if on else "off"
     current = get_state(entity_id)
     if current == desired:
+        _LOGGER.debug("Helfer-Entität %s ist bereits %s", entity_id, desired)
         return True
+    domain = entity_id.split(".", 1)[0]
     service = "turn_on" if on else "turn_off"
-    try:
-        _request("POST", f"/services/homeassistant/{service}", {"entity_id": entity_id})
-        _LOGGER.info("Helfer-Entität %s → %s", entity_id, desired)
-        return True
-    except Exception as err:  # noqa: BLE001
-        _LOGGER.warning("Helfer-Entität %s konnte nicht geschaltet werden: %s", entity_id, err)
-        return False
+    # Erst domain-spezifisch versuchen, dann homeassistant-Fallback
+    for svc_domain in (domain, "homeassistant"):
+        try:
+            _request("POST", f"/services/{svc_domain}/{service}", {"entity_id": entity_id})
+            _LOGGER.info("Helfer-Entität %s → %s (via %s.%s)", entity_id, desired, svc_domain, service)
+            return True
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("%s.%s für %s fehlgeschlagen: %s", svc_domain, service, entity_id, err)
+    _LOGGER.warning("Helfer-Entität %s konnte nicht geschaltet werden", entity_id)
+    return False
 
 
 def select_option(entity_id: str, option: str) -> bool:

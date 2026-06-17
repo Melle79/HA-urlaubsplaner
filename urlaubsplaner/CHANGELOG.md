@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.6
+
+- Fix: `set_onoff` nutzt jetzt domain-spezifische Services (z. B. `input_boolean.turn_on`)
+  mit Fallback auf `homeassistant.turn_on` – robuster für alle Entitätstypen
+- Startup-Log zeigt ob SUPERVISOR_TOKEN vorhanden ist (HA-API erreichbar)
+- Debug-Log wenn Entität bereits im gewünschten Zustand ist
+
 ## 1.4.5
 
 - Aktions-Labels im Helfer-Formular passen sich dem Auslöser an:

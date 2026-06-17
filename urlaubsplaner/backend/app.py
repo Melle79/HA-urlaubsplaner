@@ -253,6 +253,16 @@ def api_delete_urlaub(uid: str):
 def main() -> None:
     global publisher  # noqa: PLW0603
 
+    # Startup-Diagnose
+    _LOGGER.info("Urlaubsplaner v%s startet", VERSION)
+    if ha_api.available():
+        _LOGGER.info("HA-API verfügbar (SUPERVISOR_TOKEN gesetzt) – Helfer-Entitäten werden geschaltet")
+    else:
+        _LOGGER.warning(
+            "SUPERVISOR_TOKEN nicht gesetzt – Helfer-Entitäten werden NICHT geschaltet! "
+            "Prüfe ob 'homeassistant_api: true' in der config.yaml steht und das Add-on neu gestartet wurde."
+        )
+
     mqtt_host = os.environ.get("MQTT_HOST")
     if mqtt_host:
         publisher = Publisher(
