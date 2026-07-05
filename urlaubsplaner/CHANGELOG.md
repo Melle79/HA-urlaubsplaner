@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.1
+
+- Fix: Notify-Services wurden nicht gefunden – HA REST API `/services` gibt eine Liste
+  zurück, kein Dict; `list_notify_services()` verarbeitet jetzt beide Formate korrekt
+
 ## 1.6.0
 
 - **Backup/Restore**: Urlaube als JSON herunterladen und wiederherstellen (Duplikate werden erkannt)

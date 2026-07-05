@@ -11,19 +11,39 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def list_notify_services() -> list[dict]:
-    """Verfügbare notify.*-Services aus HA laden."""
+    """Verfügbare notify.*-Services aus HA laden.
+    
+    Die HA REST API /services gibt eine Liste zurück:
+    [{"domain": "notify", "services": {"mobile_app_iphone": {...}, ...}}, ...]
+    """
     if not ha_api.available():
         return []
     try:
         services = ha_api.get_services()
         result = []
-        for domain, svc_dict in (services or {}).items():
-            if domain == "notify":
-                for name in svc_dict:
+        # Liste von {"domain": str, "services": dict}
+        if isinstance(services, list):
+            for entry in services:
+                if not isinstance(entry, dict):
+                    continue
+                if entry.get("domain") != "notify":
+                    continue
+                svc_dict = entry.get("services") or {}
+                for name, info in svc_dict.items():
                     entity_id = f"notify.{name}"
-                    friendly = svc_dict[name].get("name") or name.replace("_", " ").title()
+                    friendly = (info.get("name") if isinstance(info, dict) else None) \
+                               or name.replace("_", " ").title()
                     result.append({"service": entity_id, "name": friendly})
+        # Fallback: Dict {"notify": {"mobile_app_iphone": {...}}}
+        elif isinstance(services, dict):
+            svc_dict = services.get("notify") or {}
+            for name, info in svc_dict.items():
+                entity_id = f"notify.{name}"
+                friendly = (info.get("name") if isinstance(info, dict) else None) \
+                           or name.replace("_", " ").title()
+                result.append({"service": entity_id, "name": friendly})
         result.sort(key=lambda s: s["service"])
+        _LOGGER.info("Notify-Services gefunden: %s", [r["service"] for r in result])
         return result
     except Exception as err:  # noqa: BLE001
         _LOGGER.warning("Notify-Services konnten nicht geladen werden: %s", err)
