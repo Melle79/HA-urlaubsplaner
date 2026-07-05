@@ -154,13 +154,17 @@
       <button class="ghost" id="h-cancel" hidden>Abbrechen</button>
     </div>
     <div class="form-msg" id="h-msg"></div>
-    <div class="hint">Jede Regel hält ihre Entität synchron zum gewählten Auslöser
-      (<code>binary_sensor.urlaub_heute</code> bzw. <code>urlaub_morgen</code>) – bei Änderungen,
-      beim Start und beim Datumswechsel um Mitternacht. <b>Einschalten</b>/<b>Ausschalten</b> für
-      Schalter und Helfer, <b>Option setzen</b> für <code>input_select</code>/<code>select</code>
-      (z. B. Hausmodus „Urlaub", danach zurück auf „Zuhause"; ohne „danach"-Option wird nach dem
-      Urlaub nichts zurückgesetzt). Manuelles Umschalten wird bei der nächsten Synchronisierung
-      überschrieben, solange die Regel besteht.</div>
+    <div class="hint">
+      <b>Wie funktionieren die Regeln?</b> Jede Regel schaltet ihre Entität immer auf den angezeigten Zustand –
+      also auch zurück wenn der Auslöser nicht mehr aktiv ist:<br><br>
+      <b>„Im Urlaub EIN, sonst AUS"</b> → EIN während Urlaub läuft, AUS wenn kein Urlaub. Das ist die häufigste Einstellung für einen Urlaubsschalter.<br>
+      <b>„Im Urlaub AUS, sonst EIN"</b> → AUS während Urlaub (z. B. Zirkulationspumpe), EIN wenn kein Urlaub.<br>
+      <b>„Direkt nach Urlaub EIN, sonst AUS"</b> → EIN für 60 Min. nach Urlaubsende (Willkommen-zu-Hause-Automation), sonst AUS.<br>
+      <b>„Direkt nach Urlaub AUS, sonst EIN"</b> → AUS für 60 Min. nach Urlaubsende, sonst EIN – <b>Achtung: schaltet im Normalzustand dauerhaft EIN!</b><br><br>
+      <b>Option setzen</b> gilt für <code>input_select</code>/<code>select</code>: z. B. Hausmodus auf „Urlaub", danach zurück auf „Zuhause".
+      Ohne „danach"-Option bleibt die Entität nach dem Urlaub unverändert.<br><br>
+      Schaltzeitpunkte: um Mitternacht (ohne Uhrzeit) oder exakt zur konfigurierten Abfahrts-/Ankunftszeit.
+    </div>
   </section>
 </main>
 <script>
@@ -333,9 +337,9 @@ let entityCache = [];   // {entity_id, name, options|null}
 const TRIGGER_TXT = {heute: "Urlaub heute", morgen: "Urlaub morgen", vorbei: "Urlaub gerade vorbei"};
 
 const ACTION_LABELS = {
-  heute:  {ein: "Im Urlaub einschalten",      aus: "Im Urlaub ausschalten"},
-  morgen: {ein: "Am Vortag einschalten",       aus: "Am Vortag ausschalten"},
-  vorbei: {ein: "Nach Urlaub einschalten",     aus: "Nach Urlaub ausschalten"},
+  heute:  {ein: "Im Urlaub EIN, sonst AUS",      aus: "Im Urlaub AUS, sonst EIN"},
+  morgen: {ein: "Am Vortag EIN, sonst AUS",       aus: "Am Vortag AUS, sonst EIN"},
+  vorbei: {ein: "Direkt nach Urlaub EIN, sonst AUS", aus: "Direkt nach Urlaub AUS, sonst EIN"},
 };
 
 function updateActionLabels(){
