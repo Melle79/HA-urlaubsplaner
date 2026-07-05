@@ -54,6 +54,14 @@
   button.ghost.danger:hover{color:var(--danger); border-color:var(--danger)}
   .form-msg{margin-top:10px; font-size:.85rem; color:var(--danger); min-height:1.2em}
   .form-msg.ok{color:var(--urlaub)}
+  details.notify-group{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;overflow:hidden}
+  details.notify-group summary{padding:8px 12px;background:var(--surface2);font-weight:500}
+  details.notify-group summary:hover{background:var(--line)}
+  .notify-items{padding:6px 8px}
+  .notify-row{display:flex;align-items:center;gap:8px;padding:5px 4px;border-radius:6px;cursor:pointer;font-size:.87rem}
+  .notify-row:hover{background:var(--surface2)}
+  .notify-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .notify-id{color:var(--muted);font-size:.75rem;font-family:ui-monospace,"SF Mono",monospace;flex:none;max-width:220px;overflow:hidden;text-overflow:ellipsis}
   .ghost-btn{
     background:transparent; color:var(--muted); border:1px solid var(--line);
     border-radius:8px; padding:10px 18px; font-size:.92rem; cursor:pointer;
@@ -590,19 +598,55 @@ async function loadNotifyServices(){
     if (!svcs.length){
       box.innerHTML = '<div class="empty">Keine notify.*-Services in HA gefunden.</div>';
     } else {
-      box.innerHTML = svcs.map(s=>`
-        <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:.88rem;cursor:pointer">
-          <input type="checkbox" data-svc="${s.service}" ${selected.includes(s.service)?"checked":""}>
-          ${s.name} <span style="color:var(--muted);font-size:.78rem">(${s.service})</span>
-          <button class="ghost" style="padding:3px 8px;font-size:.75rem;margin-left:auto" data-test="${s.service}">Test</button>
-        </label>`).join("");
+      // Gruppieren: mobile_app, persistent_notification, sonstige (z.B. alexa)
+      const groups = {
+        "📱 Mobile App": [],
+        "🔔 Sonstige": [],
+        "📣 Alexa / Media": [],
+      };
+      for (const s of svcs) {
+        if (s.service.includes("mobile_app")) groups["📱 Mobile App"].push(s);
+        else if (s.service.includes("alexa") || s.service.includes("media_player")) groups["📣 Alexa / Media"].push(s);
+        else groups["🔔 Sonstige"].push(s);
+      }
+
+      // Suchfeld
+      let html = `<input type="text" id="notify-search" placeholder="Services filtern…"
+        style="margin-bottom:10px;width:100%" oninput="filterNotify(this.value)">`;
+
+      for (const [groupName, items] of Object.entries(groups)) {
+        if (!items.length) continue;
+        const isAlexa = groupName.includes("Alexa");
+        const hasSelected = items.some(s => selected.includes(s.service));
+        html += `<details ${!isAlexa || hasSelected ? "open" : ""} class="notify-group">
+          <summary style="cursor:pointer;font-size:.82rem;color:var(--muted);padding:4px 0;user-select:none">
+            ${groupName} (${items.length})</summary>
+          <div class="notify-items">`;
+        for (const s of items) {
+          // Friendly Name: wenn er nur "Send a notification via X" ist, kürzen
+          let name = s.name;
+          if (/^send a notification/i.test(name)) {
+            name = s.service.replace("notify.", "").replace(/_/g, " ");
+            name = name.charAt(0).toUpperCase() + name.slice(1);
+          }
+          html += `<label class="notify-row" data-search="${(name + " " + s.service).toLowerCase()}">
+            <input type="checkbox" data-svc="${s.service}" ${selected.includes(s.service) ? "checked" : ""}>
+            <span class="notify-name">${name}</span>
+            <span class="notify-id">${s.service}</span>
+            <button class="ghost" style="padding:3px 10px;font-size:.75rem;margin-left:auto;flex:none" data-test="${s.service}">Test</button>
+          </label>`;
+        }
+        html += `</div></details>`;
+      }
+      box.innerHTML = html;
+
       box.querySelectorAll("[data-test]").forEach(btn => {
         btn.onclick = async (e) => {
           e.preventDefault();
           const svc = btn.getAttribute("data-test");
           const r = await fetch("api/notify/test",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service:svc})});
           const d = await r.json();
-          $("notify-msg").textContent = d.ok ? `Test gesendet an ${svc}` : "Fehler beim Senden";
+          $("notify-msg").textContent = d.ok ? `✓ Test gesendet an ${svc}` : "Fehler beim Senden";
           $("notify-msg").className = "form-msg"+(d.ok?" ok":"");
         };
       });
@@ -612,6 +656,13 @@ async function loadNotifyServices(){
     $("notify-start").checked = settings.notify_start !== false;
     $("notify-end").checked = settings.notify_end !== false;
   } catch(e){ box.innerHTML = '<div class="empty">Fehler beim Laden.</div>'; }
+}
+
+function filterNotify(q) {
+  q = q.toLowerCase();
+  document.querySelectorAll(".notify-row").forEach(row => {
+    row.style.display = !q || row.dataset.search.includes(q) ? "" : "none";
+  });
 }
 
 $("notify-save").onclick = async () => {

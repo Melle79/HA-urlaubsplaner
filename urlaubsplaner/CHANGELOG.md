@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.3
+
+- Notify-Services übersichtlich gruppiert: 📱 Mobile App, 🔔 Sonstige, 📣 Alexa/Media
+  (Alexa-Gruppe standardmäßig zugeklappt, wenn keine davon ausgewählt)
+- Suchfeld zum Filtern der Services
+- Friendly Names werden gekürzt ("Send a notification via..." → lesbarer Name)
+- Test-Button direkt in der Zeile
+
 ## 1.6.2
 
 - Benachrichtigungs-Uhrzeit konfigurierbar (Standard: 08:00) –
