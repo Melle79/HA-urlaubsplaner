@@ -54,6 +54,12 @@
   button.ghost.danger:hover{color:var(--danger); border-color:var(--danger)}
   .form-msg{margin-top:10px; font-size:.85rem; color:var(--danger); min-height:1.2em}
   .form-msg.ok{color:var(--urlaub)}
+  .ghost-btn{
+    background:transparent; color:var(--muted); border:1px solid var(--line);
+    border-radius:8px; padding:10px 18px; font-size:.92rem; cursor:pointer;
+    display:inline-block;
+  }
+  .ghost-btn:hover{color:var(--text); border-color:var(--muted)}
   .hint{font-size:.82rem; color:var(--muted); margin-top:4px}
   .hint code{font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:.95em}
 
@@ -158,6 +164,44 @@
       Ohne „danach"-Option bleibt die Entität nach dem Urlaub unverändert.<br><br>
       Schaltzeitpunkte: um Mitternacht (ohne Uhrzeit) oder exakt zur konfigurierten Abfahrts-/Ankunftszeit.
     </div>
+  </section>
+  <!-- Backup / iCal -->
+  <section class="panel">
+    <h2>Backup &amp; Import/Export</h2>
+    <div class="form-grid">
+      <button class="ghost" id="btn-backup">💾 Backup herunterladen</button>
+      <button class="ghost" id="btn-ical-export">📅 iCal exportieren</button>
+      <label class="ghost-btn" for="inp-restore">📂 Backup wiederherstellen</label>
+      <input type="file" id="inp-restore" accept=".json" hidden>
+      <label class="ghost-btn" for="inp-ical">📥 iCal importieren</label>
+      <input type="file" id="inp-ical" accept=".ics" hidden>
+    </div>
+    <div class="form-msg" id="io-msg"></div>
+  </section>
+
+  <!-- Benachrichtigungen -->
+  <section class="panel">
+    <h2>Benachrichtigungen</h2>
+    <div class="field" style="margin-bottom:12px">
+      <label style="font-size:.82rem;color:var(--muted)">Notify-Services (mehrere wählbar)</label>
+      <div id="notify-services"><div class="empty">Lade…</div></div>
+    </div>
+    <div class="form-grid" style="margin-bottom:10px">
+      <div class="field" style="flex:0 1 260px">
+        <label for="notify-vorlauf">Erinnerung X Tage vorher (kommagetrennt)</label>
+        <input type="text" id="notify-vorlauf" placeholder="z. B. 1, 7" maxlength="30">
+      </div>
+      <div class="field" style="flex:0 1 200px;justify-content:flex-end;flex-direction:row;align-items:center;gap:12px;padding-top:18px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:.88rem">
+          <input type="checkbox" id="notify-start"> Urlaubsbeginn</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:.88rem">
+          <input type="checkbox" id="notify-end"> Urlaubsende</label>
+      </div>
+      <button id="notify-save">Speichern</button>
+    </div>
+    <div class="form-msg" id="notify-msg"></div>
+    <div class="hint">Benachrichtigungen werden täglich um Mitternacht geprüft.
+      Zum Testen: Speichern → einzelnen Service anklicken → Testbenachrichtigung wird gesendet.</div>
   </section>
 </main>
 <script>
@@ -491,6 +535,91 @@ $("h-save").onclick = async () => {
   resetHelperForm();
   loadHelpers();
 })();
+
+// ---------- Backup / iCal ----------
+$("btn-backup").onclick = () => { window.location.href = "api/backup"; };
+$("btn-ical-export").onclick = () => { window.location.href = "api/urlaube.ics"; };
+
+$("inp-restore").onchange = async (ev) => {
+  const file = ev.target.files[0]; if (!file) return;
+  const msg = $("io-msg"); msg.className = "form-msg"; msg.textContent = "Wiederherstelle…";
+  try {
+    const resp = await fetch("api/restore", {
+      method:"POST", headers:{"Content-Type":"application/json"}, body: await file.text(),
+    });
+    const d = await resp.json();
+    if (!resp.ok){ msg.textContent = d.error || "Fehler"; return; }
+    msg.className = "form-msg ok";
+    msg.textContent = `${d.urlaube_added} Urlaube wiederhergestellt, ${d.urlaube_skipped} übersprungen.`;
+    refresh();
+  } catch(e){ msg.textContent = "Fehler: "+e; }
+  ev.target.value = "";
+};
+
+$("inp-ical").onchange = async (ev) => {
+  const file = ev.target.files[0]; if (!file) return;
+  const msg = $("io-msg"); msg.className = "form-msg"; msg.textContent = "Importiere…";
+  try {
+    const resp = await fetch("api/ical/import?nur_zukuenftige=1", {
+      method:"POST", headers:{"Content-Type":"text/calendar"}, body: await file.arrayBuffer(),
+    });
+    const d = await resp.json();
+    if (!resp.ok){ msg.textContent = d.error || "Fehler"; return; }
+    msg.className = "form-msg ok";
+    let txt = `${d.added} Urlaube importiert, ${d.skipped} übersprungen.`;
+    if (d.warnings && d.warnings.length) txt += " Hinweise: " + d.warnings.join("; ");
+    msg.textContent = txt;
+    refresh();
+  } catch(e){ msg.textContent = "Fehler: "+e; }
+  ev.target.value = "";
+};
+
+// ---------- Benachrichtigungen ----------
+async function loadNotifyServices(){
+  const box = $("notify-services");
+  try {
+    const [svcs, settings] = await Promise.all([
+      (await fetch("api/notify/services")).json(),
+      (await fetch("api/notify/settings")).json(),
+    ]);
+    const selected = settings.services || [];
+    if (!svcs.length){
+      box.innerHTML = '<div class="empty">Keine notify.*-Services in HA gefunden.</div>';
+    } else {
+      box.innerHTML = svcs.map(s=>`
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:.88rem;cursor:pointer">
+          <input type="checkbox" data-svc="${s.service}" ${selected.includes(s.service)?"checked":""}>
+          ${s.name} <span style="color:var(--muted);font-size:.78rem">(${s.service})</span>
+          <button class="ghost" style="padding:3px 8px;font-size:.75rem;margin-left:auto" data-test="${s.service}">Test</button>
+        </label>`).join("");
+      box.querySelectorAll("[data-test]").forEach(btn => {
+        btn.onclick = async (e) => {
+          e.preventDefault();
+          const svc = btn.getAttribute("data-test");
+          const r = await fetch("api/notify/test",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service:svc})});
+          const d = await r.json();
+          $("notify-msg").textContent = d.ok ? `Test gesendet an ${svc}` : "Fehler beim Senden";
+          $("notify-msg").className = "form-msg"+(d.ok?" ok":"");
+        };
+      });
+    }
+    $("notify-vorlauf").value = (settings.vorlauf_tage||[1,7]).join(", ");
+    $("notify-start").checked = settings.notify_start !== false;
+    $("notify-end").checked = settings.notify_end !== false;
+  } catch(e){ box.innerHTML = '<div class="empty">Fehler beim Laden.</div>'; }
+}
+
+$("notify-save").onclick = async () => {
+  const selected = [...$("notify-services").querySelectorAll("[data-svc]:checked")].map(c=>c.getAttribute("data-svc"));
+  const vorlauf = ($("notify-vorlauf").value||"").split(",").map(s=>parseInt(s.trim())).filter(n=>n>0&&n<=30);
+  const body = {services:selected, vorlauf_tage:vorlauf, notify_start:$("notify-start").checked, notify_end:$("notify-end").checked};
+  const resp = await fetch("api/notify/settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  const d = await resp.json();
+  $("notify-msg").className = "form-msg"+(resp.ok?" ok":"");
+  $("notify-msg").textContent = resp.ok ? "Einstellungen gespeichert." : (d.error||"Fehler");
+};
+
+loadNotifyServices();
 </script>
 </body>
 </html>

@@ -130,3 +130,14 @@ def list_entities() -> list[dict]:
             })
     out.sort(key=lambda e: e["entity_id"])
     return out
+
+
+def get_services() -> dict | None:
+    """Alle HA-Services laden (für Notify-Service-Liste)."""
+    if not available():
+        return None
+    try:
+        return _request("GET", "/services")
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Services konnten nicht geladen werden: %s", err)
+        return None

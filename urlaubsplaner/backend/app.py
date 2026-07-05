@@ -10,7 +10,9 @@ from datetime import date, datetime, time as dt_time, timedelta
 from flask import Flask, jsonify, request, send_from_directory
 
 import ha_api
+import ical
 import logic
+import notify
 import store
 from mqtt_publisher import Publisher, entity_list
 from version import VERSION
@@ -151,6 +153,9 @@ def _scheduler() -> None:
                              next_tick.strftime("%H:%M"))
             publish_now()
             _sync_helpers()
+            # Täglich um Mitternacht: Urlaubserinnerungen prüfen
+            if date.today() != last_day or True:  # immer nach Datumswechsel
+                notify.check_and_notify(store.load_urlaube())
         except Exception as err:  # noqa: BLE001
             _LOGGER.error("Scheduler-Fehler: %s", err)
             time_module.sleep(60)
@@ -320,6 +325,135 @@ def api_delete_urlaub(uid: str):
 
 
 # ---------------------------------------------------------------- Start
+
+# ---------------------------------------------------------------- iCal
+
+@app.route("/api/urlaube.ics")
+def api_ical_export():
+    urlaube = store.load_urlaube()
+    data = ical.export_ical(urlaube)
+    return data, 200, {
+        "Content-Type": "text/calendar; charset=utf-8",
+        "Content-Disposition": "attachment; filename=urlaube.ics",
+    }
+
+
+@app.route("/api/ical/import", methods=["POST"])
+def api_ical_import():
+    data = request.get_data()
+    if not data:
+        return jsonify({"error": "Keine Datei erhalten"}), 400
+    nur_zukuenftige = request.args.get("nur_zukuenftige", "1") == "1"
+    imported, warnings = ical.import_ical(data)
+
+    if nur_zukuenftige:
+        heute = date.today().isoformat()
+        imported = [u for u in imported if u.get("end", "") >= heute]
+
+    added, skipped = 0, 0
+    existing = store.load_urlaube()
+
+    for u in imported:
+        # Duplikat: gleicher Start + Ende + Bezeichnung
+        is_dup = any(
+            e.get("start") == u["start"] and e.get("end") == u["end"]
+            and e.get("label", "") == u.get("label", "")
+            for e in existing
+        )
+        if is_dup:
+            skipped += 1
+            continue
+        try:
+            store.add_urlaub(u["start"], u["end"], u.get("label", ""),
+                             u.get("start_time", ""), u.get("end_time", ""))
+            added += 1
+        except store.ValidationError as err:
+            warnings.append(f"Übersprungen ({u.get('label', '?')}): {err}")
+            skipped += 1
+
+    if added:
+        publish_now()
+    return jsonify({"added": added, "skipped": skipped, "warnings": warnings})
+
+
+# ---------------------------------------------------------------- Backup / Restore
+
+@app.route("/api/backup")
+def api_backup():
+    urlaube = store.load_urlaube()
+    helpers = store.load_helpers()
+    notify_settings = store.load_notify_settings()
+    return jsonify({
+        "version": VERSION,
+        "urlaube": urlaube,
+        "helpers": helpers,
+        "notify_settings": notify_settings,
+    }), 200, {
+        "Content-Disposition": "attachment; filename=urlaubsplaner-backup.json",
+    }
+
+
+@app.route("/api/restore", methods=["POST"])
+def api_restore():
+    data = request.get_json(silent=True)
+    if not data or "urlaube" not in data:
+        return jsonify({"error": "Ungültiges Backup-Format"}), 400
+
+    added_u, skipped_u = 0, 0
+    existing = store.load_urlaube()
+    for u in data.get("urlaube", []):
+        is_dup = any(
+            e.get("start") == u.get("start") and e.get("end") == u.get("end")
+            and e.get("label", "") == u.get("label", "")
+            for e in existing
+        )
+        if is_dup:
+            skipped_u += 1
+            continue
+        try:
+            store.add_urlaub(u.get("start"), u.get("end"), u.get("label", ""),
+                             u.get("start_time", ""), u.get("end_time", ""))
+            added_u += 1
+        except store.ValidationError:
+            skipped_u += 1
+
+    if added_u:
+        publish_now()
+    return jsonify({"urlaube_added": added_u, "urlaube_skipped": skipped_u})
+
+
+# ---------------------------------------------------------------- Notify
+
+@app.route("/api/notify/services")
+def api_notify_services():
+    return jsonify(notify.list_notify_services())
+
+
+@app.route("/api/notify/settings", methods=["GET"])
+def api_notify_settings_get():
+    return jsonify(store.load_notify_settings())
+
+
+@app.route("/api/notify/settings", methods=["PUT"])
+def api_notify_settings_put():
+    data = request.get_json(silent=True) or {}
+    try:
+        settings = store.save_notify_settings(data)
+    except Exception as err:  # noqa: BLE001
+        return jsonify({"error": str(err)}), 400
+    return jsonify(settings)
+
+
+@app.route("/api/notify/test", methods=["POST"])
+def api_notify_test():
+    data = request.get_json(silent=True) or {}
+    service = str(data.get("service", ""))
+    if not service:
+        return jsonify({"error": "Kein Service angegeben"}), 400
+    ok = notify.send_notification(service, "🏖️ Urlaubsplaner Test",
+                                  "Benachrichtigung funktioniert!")
+    return jsonify({"ok": ok})
+
 
 def main() -> None:
     global publisher  # noqa: PLW0603

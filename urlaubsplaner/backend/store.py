@@ -222,3 +222,39 @@ def delete_helper(helper_id: str) -> dict | None:
             helpers = [h for h in helpers if h.get("id") != helper_id]
             _save_settings_raw({"helpers": helpers})
         return removed
+
+
+# ---------------------------------------------------------------- Notify-Einstellungen
+
+NOTIFY_FILE = os.path.join(DATA_DIR, "notify_settings.json")
+DEFAULT_NOTIFY = {
+    "services": [],
+    "vorlauf_tage": [1, 7],
+    "notify_start": True,
+    "notify_end": True,
+}
+
+
+def load_notify_settings() -> dict:
+    settings = dict(DEFAULT_NOTIFY)
+    if os.path.exists(NOTIFY_FILE):
+        try:
+            with open(NOTIFY_FILE, encoding="utf-8") as f:
+                settings.update(json.load(f))
+        except (json.JSONDecodeError, OSError):
+            pass
+    return settings
+
+
+def save_notify_settings(data: dict) -> dict:
+    settings = {
+        "services": [str(s) for s in data.get("services", []) if str(s).startswith("notify.")],
+        "vorlauf_tage": sorted({int(d) for d in data.get("vorlauf_tage", [1, 7]) if 0 < int(d) <= 30}),
+        "notify_start": bool(data.get("notify_start", True)),
+        "notify_end": bool(data.get("notify_end", True)),
+    }
+    os.makedirs(DATA_DIR, exist_ok=True)
+    with _lock:
+        with open(NOTIFY_FILE, "w", encoding="utf-8") as f:
+            json.dump(settings, f, ensure_ascii=False, indent=2)
+    return settings

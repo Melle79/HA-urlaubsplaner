@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.0
+
+- **Backup/Restore**: Urlaube als JSON herunterladen und wiederherstellen (Duplikate werden erkannt)
+- **iCal Export**: Urlaube als .ics-Datei herunterladen, direkt in Kalender-Apps importierbar
+- **iCal Import**: .ics-Dateien importieren (Apple Calendar, Google Calendar, Outlook u. a.),
+  inkl. Zeitzonen-Konvertierung, Duplikaterkennung, nur zukünftige Events
+- **Benachrichtigungen**: Erinnerungen X Tage vorher, am Urlaubsbeginn und -ende
+  via konfigurierbare HA Notify-Services (mehrere wählbar, Testbutton pro Service)
+
 ## 1.5.4
 
 - Diagnose-Panel aus der Web-UI entfernt (war nur zum Debuggen)
