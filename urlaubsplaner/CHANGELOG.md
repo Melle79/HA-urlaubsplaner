@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.3
+
+- Klarere Aktions-Labels: zeigen jetzt immer den vollen Effekt beider Zustände
+  (z. B. „Im Urlaub EIN, sonst AUS“ statt „Im Urlaub einschalten“)
+- Ausführlicher Hilfetext erklärt jeden Fall einzeln inkl. Warnung bei
+  „Direkt nach Urlaub AUS, sonst EIN“ (schaltet im Normalzustand dauerhaft EIN)
+
 ## 1.5.2
 
 - Fix: Scheduler schläft nach dem Speichern eines neuen Urlaubs nicht mehr bis Mitternacht
