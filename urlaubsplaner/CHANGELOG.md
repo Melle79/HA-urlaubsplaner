@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.4
+
+- Test-Button zeigt jetzt den genauen Fehler an wenn ein Service nicht erreichbar ist
+- Alexa-Media-Services: Fehlermeldung im Log und in der UI bei nicht funktionierenden Services
+- `send_notification` gibt jetzt (ok, fehlertext) zurück statt nur bool
+
 ## 1.6.3
 
 - Notify-Services übersichtlich gruppiert: 📱 Mobile App, 🔔 Sonstige, 📣 Alexa/Media

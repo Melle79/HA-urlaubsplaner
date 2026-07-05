@@ -646,7 +646,7 @@ async function loadNotifyServices(){
           const svc = btn.getAttribute("data-test");
           const r = await fetch("api/notify/test",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service:svc})});
           const d = await r.json();
-          $("notify-msg").textContent = d.ok ? `✓ Test gesendet an ${svc}` : "Fehler beim Senden";
+          $("notify-msg").textContent = d.ok ? `✓ Test gesendet an ${svc}` : `✗ Fehler (${svc}): ${d.error||"unbekannt"}`;
           $("notify-msg").className = "form-msg"+(d.ok?" ok":"");
         };
       });

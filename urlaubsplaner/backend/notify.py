@@ -50,23 +50,25 @@ def list_notify_services() -> list[dict]:
         return []
 
 
-def send_notification(service: str, title: str, message: str) -> bool:
-    """Benachrichtigung über einen HA Notify-Service senden."""
+def send_notification(service: str, title: str, message: str) -> tuple[bool, str]:
+    """Benachrichtigung über einen HA Notify-Service senden.
+    
+    Rückgabe: (ok, fehlermeldung)
+    """
     if not ha_api.available():
-        return False
-    # service = "notify.mobile_app_iphone_von_sven"
+        return False, "SUPERVISOR_TOKEN nicht gesetzt"
     domain, _, name = service.partition(".")
     if domain != "notify" or not name:
-        _LOGGER.warning("Ungültiger Notify-Service: %s", service)
-        return False
+        return False, f"Ungültiger Service: {service}"
     try:
         ha_api._request("POST", f"/services/notify/{name}",
                         {"title": title, "message": message})
         _LOGGER.info("Benachrichtigung gesendet via %s: %s", service, title)
-        return True
+        return True, ""
     except Exception as err:  # noqa: BLE001
-        _LOGGER.warning("Benachrichtigung via %s fehlgeschlagen: %s", service, err)
-        return False
+        detail = str(err)
+        _LOGGER.warning("Benachrichtigung via %s fehlgeschlagen: %s", service, detail)
+        return False, detail
 
 
 def check_and_notify(urlaube: list[dict]) -> None:
@@ -117,4 +119,6 @@ def check_and_notify(urlaube: list[dict]) -> None:
 
 def _send_to_all(services: list[str], title: str, message: str) -> None:
     for svc in services:
-        send_notification(svc, title, message)
+        ok, err = send_notification(svc, title, message)
+        if not ok:
+            _LOGGER.warning("Service %s: %s", svc, err)

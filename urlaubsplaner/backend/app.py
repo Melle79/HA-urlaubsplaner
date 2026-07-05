@@ -478,10 +478,10 @@ def api_notify_test():
     data = request.get_json(silent=True) or {}
     service = str(data.get("service", ""))
     if not service:
-        return jsonify({"error": "Kein Service angegeben"}), 400
-    ok = notify.send_notification(service, "🏖️ Urlaubsplaner Test",
-                                  "Benachrichtigung funktioniert!")
-    return jsonify({"ok": ok})
+        return jsonify({"ok": False, "error": "Kein Service angegeben"}), 400
+    ok, error = notify.send_notification(service, "🏖️ Urlaubsplaner Test",
+                                         "Benachrichtigung funktioniert!")
+    return jsonify({"ok": ok, "error": error})
 
 
 def main() -> None:
