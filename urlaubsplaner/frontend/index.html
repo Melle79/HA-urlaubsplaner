@@ -187,6 +187,10 @@
       <div id="notify-services"><div class="empty">Lade…</div></div>
     </div>
     <div class="form-grid" style="margin-bottom:10px">
+      <div class="field" style="flex:0 1 180px">
+        <label for="notify-time">Uhrzeit der Erinnerung</label>
+        <input type="time" id="notify-time" value="08:00">
+      </div>
       <div class="field" style="flex:0 1 260px">
         <label for="notify-vorlauf">Erinnerung X Tage vorher (kommagetrennt)</label>
         <input type="text" id="notify-vorlauf" placeholder="z. B. 1, 7" maxlength="30">
@@ -200,8 +204,8 @@
       <button id="notify-save">Speichern</button>
     </div>
     <div class="form-msg" id="notify-msg"></div>
-    <div class="hint">Benachrichtigungen werden täglich um Mitternacht geprüft.
-      Zum Testen: Speichern → einzelnen Service anklicken → Testbenachrichtigung wird gesendet.</div>
+    <div class="hint">Benachrichtigungen werden täglich zur eingestellten Uhrzeit geprüft und gesendet.
+      Zum Testen: Speichern → Test-Button beim gewünschten Service klicken.</div>
   </section>
 </main>
 <script>
@@ -604,6 +608,7 @@ async function loadNotifyServices(){
       });
     }
     $("notify-vorlauf").value = (settings.vorlauf_tage||[1,7]).join(", ");
+    $("notify-time").value = settings.notify_time || "08:00";
     $("notify-start").checked = settings.notify_start !== false;
     $("notify-end").checked = settings.notify_end !== false;
   } catch(e){ box.innerHTML = '<div class="empty">Fehler beim Laden.</div>'; }
@@ -612,7 +617,7 @@ async function loadNotifyServices(){
 $("notify-save").onclick = async () => {
   const selected = [...$("notify-services").querySelectorAll("[data-svc]:checked")].map(c=>c.getAttribute("data-svc"));
   const vorlauf = ($("notify-vorlauf").value||"").split(",").map(s=>parseInt(s.trim())).filter(n=>n>0&&n<=30);
-  const body = {services:selected, vorlauf_tage:vorlauf, notify_start:$("notify-start").checked, notify_end:$("notify-end").checked};
+  const body = {services:selected, vorlauf_tage:vorlauf, notify_start:$("notify-start").checked, notify_end:$("notify-end").checked, notify_time:$("notify-time").value};
   const resp = await fetch("api/notify/settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   const d = await resp.json();
   $("notify-msg").className = "form-msg"+(resp.ok?" ok":"");

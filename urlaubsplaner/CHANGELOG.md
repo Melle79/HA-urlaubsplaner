@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.2
+
+- Benachrichtigungs-Uhrzeit konfigurierbar (Standard: 08:00) –
+  Erinnerungen kommen nicht mehr um Mitternacht
+- Scheduler wacht zur eingestellten Uhrzeit auf und sendet Benachrichtigungen
+  einmal täglich; doppeltes Senden am gleichen Tag wird verhindert
+
 ## 1.6.1
 
 - Fix: Notify-Services wurden nicht gefunden – HA REST API `/services` gibt eine Liste

@@ -123,19 +123,40 @@ def handle_command(payload: dict) -> None:
 # ---------------------------------------------------------------- Scheduler
 
 def _scheduler() -> None:
-    """Helfer zu relevanten Zeitpunkten schalten."""
+    """Helfer zu relevanten Zeitpunkten schalten, Benachrichtigungen zur konfigurierten Uhrzeit."""
     _LOGGER.info("Scheduler gestartet – einmaliger Sync beim Start")
     _sync_helpers()
 
     last_day = date.today()
+    last_notify_day: date | None = None  # merken wann zuletzt Notify gesendet wurde
+
     while True:
         try:
             _scheduler_event.clear()
             urlaube = store.load_urlaube()
+            notify_settings = store.load_notify_settings()
+            notify_time_str = notify_settings.get("notify_time", "08:00")
+            try:
+                nh, nm = int(notify_time_str[:2]), int(notify_time_str[3:])
+                notify_dt = datetime.combine(date.today(), dt_time(nh, nm))
+                # Wenn Notify-Zeit heute schon vorbei -> morgen
+                if notify_dt <= datetime.now():
+                    notify_dt = datetime.combine(date.today() + timedelta(days=1), dt_time(nh, nm))
+            except (ValueError, IndexError):
+                notify_dt = None
+
             wakeup = logic.next_wakeup(urlaube)
             now = datetime.now()
             midnight = datetime.combine(date.today() + timedelta(days=1), dt_time(0, 0, 5))
-            next_tick = min(wakeup, midnight) if wakeup else midnight
+
+            # Nächster Tick: frühestes aus Urlaubszeit, Notify-Zeit und Mitternacht
+            candidates = [midnight]
+            if wakeup:
+                candidates.append(wakeup)
+            if notify_dt:
+                candidates.append(notify_dt)
+            next_tick = min(candidates)
+
             sleep_secs = max(10, (next_tick - now).total_seconds())
             _LOGGER.info(
                 "Scheduler: nächster Weckzeitpunkt %s (in %.0f s / %.1f h)",
@@ -144,18 +165,26 @@ def _scheduler() -> None:
             interrupted = _scheduler_event.wait(timeout=sleep_secs)
             if interrupted:
                 _LOGGER.info("Scheduler: Urlaub geändert – Weckpunkt wird neu berechnet")
-                continue  # sofort neu berechnen, noch nicht schalten
-            if date.today() != last_day:
-                last_day = date.today()
+                continue
+
+            now = datetime.now()
+            today = date.today()
+
+            if today != last_day:
+                last_day = today
                 _LOGGER.info("Datumswechsel – Helfer werden synchronisiert")
-            else:
-                _LOGGER.info("Uhrzeit-Trigger %s – Helfer werden synchronisiert",
-                             next_tick.strftime("%H:%M"))
+
             publish_now()
             _sync_helpers()
-            # Täglich um Mitternacht: Urlaubserinnerungen prüfen
-            if date.today() != last_day or True:  # immer nach Datumswechsel
-                notify.check_and_notify(store.load_urlaube())
+
+            # Benachrichtigung: zur konfigurierten Uhrzeit, einmal pro Tag
+            if notify_dt and abs((now - notify_dt).total_seconds()) <= 120:
+                if last_notify_day != today:
+                    _LOGGER.info("Benachrichtigungszeitpunkt %s – prüfe Urlaubserinnerungen",
+                                 notify_time_str)
+                    notify.check_and_notify(store.load_urlaube())
+                    last_notify_day = today
+
         except Exception as err:  # noqa: BLE001
             _LOGGER.error("Scheduler-Fehler: %s", err)
             time_module.sleep(60)

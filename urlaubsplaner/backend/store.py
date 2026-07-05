@@ -232,6 +232,7 @@ DEFAULT_NOTIFY = {
     "vorlauf_tage": [1, 7],
     "notify_start": True,
     "notify_end": True,
+    "notify_time": "08:00",
 }
 
 
@@ -247,11 +248,16 @@ def load_notify_settings() -> dict:
 
 
 def save_notify_settings(data: dict) -> dict:
+    import re as _re2
+    nt = str(data.get("notify_time", "08:00")).strip()
+    if not _re2.match(r"^([01]\d|2[0-3]):[0-5]\d$", nt):
+        nt = "08:00"
     settings = {
         "services": [str(s) for s in data.get("services", []) if str(s).startswith("notify.")],
         "vorlauf_tage": sorted({int(d) for d in data.get("vorlauf_tage", [1, 7]) if 0 < int(d) <= 30}),
         "notify_start": bool(data.get("notify_start", True)),
         "notify_end": bool(data.get("notify_end", True)),
+        "notify_time": nt,
     }
     os.makedirs(DATA_DIR, exist_ok=True)
     with _lock:
