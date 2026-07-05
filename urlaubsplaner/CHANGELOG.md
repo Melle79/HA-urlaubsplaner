@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.4
+
+- Diagnose-Panel aus der Web-UI entfernt (war nur zum Debuggen)
+
 ## 1.5.3
 
 - Klarere Aktions-Labels: zeigen jetzt immer den vollen Effekt beider Zustände
