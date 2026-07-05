@@ -233,6 +233,12 @@ DEFAULT_NOTIFY = {
     "notify_start": True,
     "notify_end": True,
     "notify_time": "08:00",
+    "tpl_vorlauf_title": "🏖️ Urlaub in {tage_vorher} {tage_vorher_wort}",
+    "tpl_vorlauf_msg":   "{bezeichnung} beginnt am {beginn}{abfahrt_info}.\nDauer: {dauer} Tage.",
+    "tpl_start_title":   "🏖️ Urlaubsbeginn: {bezeichnung}",
+    "tpl_start_msg":     "Dein Urlaub beginnt heute{abfahrt_info}. Schöne Zeit! 🌴",
+    "tpl_end_title":     "✈️ Urlaubsende: {bezeichnung}",
+    "tpl_end_msg":       "Dein Urlaub endet heute{ankunft_info}. Willkommen zurück! 🏠",
 }
 
 
@@ -252,6 +258,11 @@ def save_notify_settings(data: dict) -> dict:
     nt = str(data.get("notify_time", "08:00")).strip()
     if not _re2.match(r"^([01]\d|2[0-3]):[0-5]\d$", nt):
         nt = "08:00"
+    TPL_KEYS = [
+        "tpl_vorlauf_title", "tpl_vorlauf_msg",
+        "tpl_start_title",   "tpl_start_msg",
+        "tpl_end_title",     "tpl_end_msg",
+    ]
     settings = {
         "services": [str(s) for s in data.get("services", []) if str(s).startswith("notify.")],
         "vorlauf_tage": sorted({int(d) for d in data.get("vorlauf_tage", [1, 7]) if 0 < int(d) <= 30}),
@@ -259,6 +270,9 @@ def save_notify_settings(data: dict) -> dict:
         "notify_end": bool(data.get("notify_end", True)),
         "notify_time": nt,
     }
+    for key in TPL_KEYS:
+        val = str(data.get(key, "")).strip()
+        settings[key] = val if val else DEFAULT_NOTIFY[key]
     os.makedirs(DATA_DIR, exist_ok=True)
     with _lock:
         with open(NOTIFY_FILE, "w", encoding="utf-8") as f:

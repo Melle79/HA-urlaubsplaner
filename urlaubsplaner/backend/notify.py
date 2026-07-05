@@ -71,6 +71,19 @@ def send_notification(service: str, title: str, message: str) -> tuple[bool, str
         return False, detail
 
 
+def _render(template: str, ctx: dict) -> str:
+    """Einfaches Template-Rendering: {platzhalter} ersetzen."""
+    try:
+        return template.format_map(ctx)
+    except (KeyError, ValueError):
+        # Unbekannte Platzhalter unverändert lassen
+        import string
+        result = template
+        for key, val in ctx.items():
+            result = result.replace("{" + key + "}", str(val))
+        return result
+
+
 def check_and_notify(urlaube: list[dict]) -> None:
     """Täglich prüfen ob Erinnerungen gesendet werden sollen."""
     settings = store.load_notify_settings()
@@ -93,27 +106,45 @@ def check_and_notify(urlaube: list[dict]) -> None:
         start_time = u.get("start_time", "")
         end_time = u.get("end_time", "")
 
+        # Gemeinsamer Kontext für alle Templates
+        ctx = {
+            "bezeichnung":   label,
+            "beginn":        start_d.strftime("%d.%m.%Y"),
+            "ende":          end_d.strftime("%d.%m.%Y"),
+            "dauer":         str((end_d - start_d).days + 1),
+            "abfahrt":       start_time,
+            "ankunft":       end_time,
+            "abfahrt_info":  f" um {start_time} Uhr" if start_time else "",
+            "ankunft_info":  f" um {end_time} Uhr" if end_time else "",
+            "tage_vorher":   "",
+            "tage_vorher_wort": "",
+        }
+
         # Vorlauf-Erinnerungen
         for tage in vorlauf_tage:
             if (start_d - today).days == tage:
-                time_info = f" um {start_time} Uhr" if start_time else ""
-                title = f"🏖️ Urlaub in {tage} {'Tag' if tage == 1 else 'Tagen'}"
-                msg = (f"{label} beginnt am {start_d.strftime('%d.%m.%Y')}{time_info}.\n"
-                       f"Dauer: {(end_d - start_d).days + 1} Tage.")
+                ctx_v = {**ctx, "tage_vorher": str(tage),
+                         "tage_vorher_wort": "Tag" if tage == 1 else "Tagen"}
+                title = _render(settings.get("tpl_vorlauf_title",
+                    store.DEFAULT_NOTIFY["tpl_vorlauf_title"]), ctx_v)
+                msg = _render(settings.get("tpl_vorlauf_msg",
+                    store.DEFAULT_NOTIFY["tpl_vorlauf_msg"]), ctx_v)
                 _send_to_all(services, title, msg)
 
         # Am Tag selbst: Urlaubsbeginn
         if settings.get("notify_start", True) and start_d == today:
-            time_info = f" um {start_time} Uhr" if start_time else " (ganztägig)"
-            title = f"🏖️ Urlaubsbeginn: {label}"
-            msg = f"Dein Urlaub beginnt heute{time_info}. Schöne Zeit! 🌴"
+            title = _render(settings.get("tpl_start_title",
+                store.DEFAULT_NOTIFY["tpl_start_title"]), ctx)
+            msg = _render(settings.get("tpl_start_msg",
+                store.DEFAULT_NOTIFY["tpl_start_msg"]), ctx)
             _send_to_all(services, title, msg)
 
         # Am letzten Tag: Urlaubsende
         if settings.get("notify_end", True) and end_d == today:
-            time_info = f" um {end_time} Uhr" if end_time else ""
-            title = f"✈️ Urlaubsende: {label}"
-            msg = f"Dein Urlaub endet heute{time_info}. Willkommen zurück! 🏠"
+            title = _render(settings.get("tpl_end_title",
+                store.DEFAULT_NOTIFY["tpl_end_title"]), ctx)
+            msg = _render(settings.get("tpl_end_msg",
+                store.DEFAULT_NOTIFY["tpl_end_msg"]), ctx)
             _send_to_all(services, title, msg)
 
 

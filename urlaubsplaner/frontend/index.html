@@ -212,8 +212,43 @@
       <button id="notify-save">Speichern</button>
     </div>
     <div class="form-msg" id="notify-msg"></div>
-    <div class="hint">Benachrichtigungen werden täglich zur eingestellten Uhrzeit geprüft und gesendet.
-      Zum Testen: Speichern → Test-Button beim gewünschten Service klicken.</div>
+
+    <details style="margin-top:4px">
+      <summary style="cursor:pointer;font-size:.82rem;color:var(--muted);padding:4px 0;user-select:none">
+        ▸ Benachrichtigungstexte anpassen</summary>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
+
+        <div class="hint" style="margin-top:0">
+          <b>Verfügbare Platzhalter:</b><br>
+          <code>{bezeichnung}</code> – Urlaubsname &nbsp;
+          <code>{beginn}</code> – Startdatum (TT.MM.JJJJ) &nbsp;
+          <code>{ende}</code> – Enddatum &nbsp;
+          <code>{dauer}</code> – Anzahl Tage &nbsp;
+          <code>{abfahrt}</code> – Abfahrtszeit (leer wenn nicht gesetzt) &nbsp;
+          <code>{ankunft}</code> – Ankunftszeit (leer wenn nicht gesetzt) &nbsp;
+          <code>{abfahrt_info}</code> – „ um HH:MM Uhr" oder leer &nbsp;
+          <code>{ankunft_info}</code> – „ um HH:MM Uhr" oder leer &nbsp;
+          <code>{tage_vorher}</code> – Anzahl Tage bis Urlaub (nur Vorlauf) &nbsp;
+          <code>{tage_vorher_wort}</code> – „Tag" oder „Tagen" (nur Vorlauf)
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="field"><label>Vorlauf – Titel</label>
+            <input type="text" id="tpl-vorlauf-title" maxlength="200"></div>
+          <div class="field"><label>Vorlauf – Text</label>
+            <input type="text" id="tpl-vorlauf-msg" maxlength="500"></div>
+          <div class="field"><label>Urlaubsbeginn – Titel</label>
+            <input type="text" id="tpl-start-title" maxlength="200"></div>
+          <div class="field"><label>Urlaubsbeginn – Text</label>
+            <input type="text" id="tpl-start-msg" maxlength="500"></div>
+          <div class="field"><label>Urlaubsende – Titel</label>
+            <input type="text" id="tpl-end-title" maxlength="200"></div>
+          <div class="field"><label>Urlaubsende – Text</label>
+            <input type="text" id="tpl-end-msg" maxlength="500"></div>
+        </div>
+        <div style="font-size:.78rem;color:var(--muted)">Felder leer lassen = Standardtext verwenden</div>
+      </div>
+    </details>
   </section>
 </main>
 <script>
@@ -655,6 +690,20 @@ async function loadNotifyServices(){
     $("notify-time").value = settings.notify_time || "08:00";
     $("notify-start").checked = settings.notify_start !== false;
     $("notify-end").checked = settings.notify_end !== false;
+    // Templates laden (leer = Standard)
+    const DEFAULTS = {
+      "tpl-vorlauf-title": "🏖️ Urlaub in {tage_vorher} {tage_vorher_wort}",
+      "tpl-vorlauf-msg":   "{bezeichnung} beginnt am {beginn}{abfahrt_info}.\nDauer: {dauer} Tage.",
+      "tpl-start-title":   "🏖️ Urlaubsbeginn: {bezeichnung}",
+      "tpl-start-msg":     "Dein Urlaub beginnt heute{abfahrt_info}. Schöne Zeit! 🌴",
+      "tpl-end-title":     "✈️ Urlaubsende: {bezeichnung}",
+      "tpl-end-msg":       "Dein Urlaub endet heute{ankunft_info}. Willkommen zurück! 🏠",
+    };
+    for (const [id, def] of Object.entries(DEFAULTS)) {
+      const key = id.replace(/-/g, "_");
+      $(id).value = settings[key] !== def ? (settings[key] || "") : "";
+      $(id).placeholder = def;
+    }
   } catch(e){ box.innerHTML = '<div class="empty">Fehler beim Laden.</div>'; }
 }
 
@@ -668,7 +717,19 @@ function filterNotify(q) {
 $("notify-save").onclick = async () => {
   const selected = [...$("notify-services").querySelectorAll("[data-svc]:checked")].map(c=>c.getAttribute("data-svc"));
   const vorlauf = ($("notify-vorlauf").value||"").split(",").map(s=>parseInt(s.trim())).filter(n=>n>0&&n<=30);
-  const body = {services:selected, vorlauf_tage:vorlauf, notify_start:$("notify-start").checked, notify_end:$("notify-end").checked, notify_time:$("notify-time").value};
+  const body = {
+    services: selected,
+    vorlauf_tage: vorlauf,
+    notify_start: $("notify-start").checked,
+    notify_end: $("notify-end").checked,
+    notify_time: $("notify-time").value,
+    tpl_vorlauf_title: $("tpl-vorlauf-title").value.trim(),
+    tpl_vorlauf_msg:   $("tpl-vorlauf-msg").value.trim(),
+    tpl_start_title:   $("tpl-start-title").value.trim(),
+    tpl_start_msg:     $("tpl-start-msg").value.trim(),
+    tpl_end_title:     $("tpl-end-title").value.trim(),
+    tpl_end_msg:       $("tpl-end-msg").value.trim(),
+  };
   const resp = await fetch("api/notify/settings",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   const d = await resp.json();
   $("notify-msg").className = "form-msg"+(resp.ok?" ok":"");

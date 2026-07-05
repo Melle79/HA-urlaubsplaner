@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.5
+
+- **Anpassbare Benachrichtigungstexte**: Titel und Text für Vorlauf, Urlaubsbeginn
+  und Urlaubsende individuell konfigurierbar (zugeklappter Bereich in der Web-UI)
+- Platzhalter: `{bezeichnung}`, `{beginn}`, `{ende}`, `{dauer}`, `{abfahrt}`,
+  `{ankunft}`, `{abfahrt_info}`, `{ankunft_info}`, `{tage_vorher}`, `{tage_vorher_wort}`
+- Leere Felder = Standardtext; Platzhalter-Referenz direkt in der UI
+
 ## 1.6.4
 
 - Test-Button zeigt jetzt den genauen Fehler an wenn ein Service nicht erreichbar ist
