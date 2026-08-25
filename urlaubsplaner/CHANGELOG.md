@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.7
+
+- **Knopf „Jetzt synchronisieren"** bei den mitgeschalteten Entitäten: setzt alle
+  Regeln sofort auf ihren Sollzustand. Der Endpunkt `/api/sync` gab es schon, in der
+  Web-UI fehlte der Knopf dazu – seit v1.6.6 (Schalten nur noch beim Wechsel) ist er
+  der Weg, einen Zustand von Hand zu erzwingen
+- Hilfetext in der Web-UI an das Flankenverhalten angepasst
+- README mit Screenshots
+
 ## 1.6.6
 
 - **Helfer schalten nur noch bei echtem Wechsel**: Bisher hat jeder Weckzeitpunkt

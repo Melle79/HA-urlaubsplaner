@@ -160,17 +160,23 @@
       <button id="h-save">Hinzufügen</button>
       <button class="ghost" id="h-cancel" hidden>Abbrechen</button>
     </div>
+    <div style="margin-top:12px">
+      <button class="ghost" id="h-sync" title="Alle Regeln sofort auf ihren Sollzustand setzen">Jetzt synchronisieren</button>
+    </div>
     <div class="form-msg" id="h-msg"></div>
     <div class="hint">
-      <b>Wie funktionieren die Regeln?</b> Jede Regel schaltet ihre Entität immer auf den angezeigten Zustand –
-      also auch zurück wenn der Auslöser nicht mehr aktiv ist:<br><br>
+      <b>Wie funktionieren die Regeln?</b> Jede Regel schaltet ihre Entität beim Wechsel auf den angezeigten
+      Zustand – also auch zurück wenn der Auslöser nicht mehr aktiv ist:<br><br>
       <b>„Im Urlaub EIN, sonst AUS"</b> → EIN während Urlaub läuft, AUS wenn kein Urlaub. Das ist die häufigste Einstellung für einen Urlaubsschalter.<br>
       <b>„Im Urlaub AUS, sonst EIN"</b> → AUS während Urlaub (z. B. Zirkulationspumpe), EIN wenn kein Urlaub.<br>
       <b>„Direkt nach Urlaub EIN, sonst AUS"</b> → EIN für 60 Min. nach Urlaubsende (Willkommen-zu-Hause-Automation), sonst AUS.<br>
       <b>„Direkt nach Urlaub AUS, sonst EIN"</b> → AUS für 60 Min. nach Urlaubsende, sonst EIN – <b>Achtung: schaltet im Normalzustand dauerhaft EIN!</b><br><br>
       <b>Option setzen</b> gilt für <code>input_select</code>/<code>select</code>: z. B. Hausmodus auf „Urlaub", danach zurück auf „Zuhause".
       Ohne „danach"-Option bleibt die Entität nach dem Urlaub unverändert.<br><br>
-      Schaltzeitpunkte: um Mitternacht (ohne Uhrzeit) oder exakt zur konfigurierten Abfahrts-/Ankunftszeit.
+      Schaltzeitpunkte: um Mitternacht (ohne Uhrzeit) oder exakt zur konfigurierten Abfahrts-/Ankunftszeit.<br><br>
+      <b>Geschaltet wird nur beim Wechsel.</b> Zwischen zwei Wechseln schreibt das Add-on nichts nach Home
+      Assistant – wer eine Entität von Hand umstellt, behält sie deshalb bis zum nächsten Urlaubswechsel.
+      „Jetzt synchronisieren" setzt sie sofort auf den Regelzustand zurück.
     </div>
   </section>
   <!-- Backup / iCal -->
@@ -422,6 +428,23 @@ function actionTxt(h){
   if (h.option_normal) t += ` → danach „${h.option_normal}"`;
   return t;
 }
+
+$("h-sync").addEventListener("click", async () => {
+  const btn = $("h-sync"), msg = $("h-msg");
+  btn.disabled = true;
+  msg.className = "form-msg"; msg.textContent = "";
+  try{
+    const r = await fetch("api/sync", {method: "POST"});
+    if(!r.ok) throw new Error(r.status);
+    msg.className = "form-msg ok";
+    msg.textContent = "Alle Regeln wurden auf ihren Sollzustand gesetzt.";
+  }catch(e){
+    msg.textContent = "Synchronisierung fehlgeschlagen.";
+  }finally{
+    btn.disabled = false;
+    setTimeout(() => { msg.textContent = ""; msg.className = "form-msg"; }, 5000);
+  }
+});
 
 async function loadEntities(){
   try{

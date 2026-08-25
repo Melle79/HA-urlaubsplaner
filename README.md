@@ -6,6 +6,8 @@ Home Assistant Add-on-Repository mit dem **Urlaubsplaner**: Urlaubszeiträume be
 
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy_me_a_coffee-melle79-FFDD00?logo=buymeacoffee&logoColor=black&style=for-the-badge)](https://buymeacoffee.com/melle79)
 
+![Urlaube anlegen und verwalten](images/uebersicht.png)
+
 ## Funktionen
 
 - **Web-UI als Ingress-Panel**: Urlaube mit Bezeichnung, Von- und Bis-Datum anlegen – per Kalender-Popup oder manueller Eingabe
@@ -47,6 +49,18 @@ automation:
         data:
           temperature: 17
 ```
+
+## Screenshots
+
+**Mitgeschaltete Entitäten** – Regeln legen fest, welche Entität beim Urlaubswechsel wie geschaltet wird.
+Geschaltet wird nur beim Wechsel; „Jetzt synchronisieren" setzt alle Regeln sofort auf ihren Sollzustand.
+
+![Regeln für mitgeschaltete Entitäten](images/regeln.png)
+
+**Benachrichtigungen** – Erinnerung mit Vorlauf, zur Uhrzeit deiner Wahl, an beliebige `notify.*`-Dienste.
+Backup und iCal-Export liegen gleich darüber.
+
+![Benachrichtigungen und Backup](images/benachrichtigungen.png)
 
 ## Voraussetzungen
 
