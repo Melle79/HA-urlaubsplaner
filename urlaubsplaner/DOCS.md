@@ -51,9 +51,22 @@ Eine bestehende Einzel-Einstellung aus v1.1.0 wird beim ersten Start automatisch
 
 ## Dashboard-Karte
 
-Die [Urlaubsplaner Card](https://github.com/Melle79/HA-urlaubsplaner-card) (HACS, Typ Dashboard) zeigt
-Badges, 14-Tage-Streifen und die Urlaubsliste – inklusive Anlegen/Bearbeiten/Löschen direkt in der Karte.
-Die Karte sendet Änderungen über `mqtt.publish` an das Topic `urlaubsplaner/cmd`.
+Die Karte wird **vom Add-on mitgeliefert**: Beim Start landet `urlaubsplaner-card.js` in `www/`
+deiner Konfiguration und wird als Lovelace-Ressource (`/local/urlaubsplaner-card.js`) eingetragen.
+Eine Installation über HACS ist nicht mehr nötig. Im Dashboard genügt dann:
+
+```yaml
+type: custom:urlaubsplaner-card
+title: Urlaub
+```
+
+Sie zeigt Badges, den 14-Tage-Streifen und die Urlaubsliste – inklusive Anlegen, Bearbeiten und
+Löschen direkt in der Karte. Änderungen gehen über `mqtt.publish` an das Topic `urlaubsplaner/cmd`.
+
+Ist die Karte noch aus einer anderen Quelle eingebunden (etwa HACS unter `/hacsfiles/…`), legt das
+Add-on **keine** zweite Ressource an und schreibt stattdessen einen Hinweis ins Protokoll. Entferne
+in dem Fall zuerst die alte Einbindung. Fehlt dem Add-on das Schreibrecht auf die Konfiguration,
+wird die Karte übersprungen – das Add-on läuft normal weiter.
 
 ## Daten
 

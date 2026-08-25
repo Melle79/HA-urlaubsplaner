@@ -8,6 +8,7 @@ RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt
 
 COPY backend /app/backend
 COPY frontend /app/frontend
+COPY card /app/card
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 

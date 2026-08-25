@@ -76,16 +76,26 @@ Backup und iCal-Export liegen gleich darüber.
 
 ## Dashboard-Karte
 
-Passend zum Add-on gibt es die **[Urlaubsplaner Card](https://github.com/Melle79/HA-urlaubsplaner-card)** – eine Custom Lovelace Card mit Status-Badges (Heute/Morgen), 14-Tage-Streifen, dem nächsten Urlaub und der kompletten Urlaubsliste. Urlaube lassen sich **direkt in der Karte anlegen, bearbeiten und löschen** (Datumsauswahl per Kalender-Popup oder manuell).
+Die Karte ist **im Add-on enthalten** – eine getrennte Installation über HACS ist nicht nötig.
+Beim Start legt das Add-on `urlaubsplaner-card.js` nach `www/` deiner Home-Assistant-Konfiguration
+und trägt sie als Lovelace-Ressource ein. Damit sind Karte und Add-on immer versionsgleich.
 
-[![In HACS öffnen](https://img.shields.io/badge/HACS-Karte_in_Home_Assistant_öffnen-41BDF5?logo=home-assistant&logoColor=white&style=for-the-badge)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Melle79&repository=HA-urlaubsplaner-card&category=plugin)
-
-**Installation über HACS:** Badge anklicken oder manuell: HACS → ⋮ → Benutzerdefinierte Repositories → `https://github.com/Melle79/HA-urlaubsplaner-card`, Typ **Dashboard** → „Urlaubsplaner Card" installieren. Konfiguration und Beispiele stehen im [Karten-Repository](https://github.com/Melle79/HA-urlaubsplaner-card).
+Danach genügt eine manuelle Karte im Dashboard:
 
 ```yaml
 type: custom:urlaubsplaner-card
 title: Urlaub
 ```
+
+Sie zeigt Status-Badges (Heute / Morgen / Gerade vorbei), den 14-Tage-Streifen, den nächsten Urlaub
+und die komplette Liste. Urlaube lassen sich **direkt in der Karte** anlegen, bearbeiten und löschen;
+die Änderungen gehen per `mqtt.publish` an das Topic `urlaubsplaner/cmd`.
+
+> **Umstieg von der HACS-Karte:** Solange die Karte noch über HACS eingebunden ist, hält sich das
+> Add-on zurück und legt **keine** zweite Ressource an – zwei Registrierungen desselben Elements
+> würden das Dashboard stören. Deinstalliere dazu „Urlaubsplaner Card" in HACS und entferne die
+> Ressource `/hacsfiles/HA-urlaubsplaner-card/…` unter *Einstellungen → Dashboards → ⋮ → Ressourcen*.
+> Beim nächsten Add-on-Start übernimmt das Add-on. Ein entsprechender Hinweis steht im Add-on-Protokoll.
 
 ## Technik
 

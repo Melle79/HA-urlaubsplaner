@@ -15,6 +15,7 @@ import logic
 import notify
 import store
 from mqtt_publisher import Publisher, entity_list
+import cardsync
 from version import VERSION
 
 logging.basicConfig(
@@ -553,6 +554,7 @@ def main() -> None:
 
     threading.Thread(target=publish_now, daemon=True).start()
     threading.Thread(target=_scheduler, daemon=True).start()
+    threading.Thread(target=cardsync.sync, daemon=True).start()
 
     port = int(os.environ.get("PORT", "8099"))
     app.run(host="0.0.0.0", port=port)

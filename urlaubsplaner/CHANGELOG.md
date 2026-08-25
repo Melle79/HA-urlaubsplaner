@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.7.0
+
+- **Die Dashboard-Karte ist jetzt im Add-on enthalten.** Beim Start wird
+  `urlaubsplaner-card.js` nach `www/` der Home-Assistant-Konfiguration kopiert und als
+  Lovelace-Ressource `/local/urlaubsplaner-card.js?v=<Hash>` eingetragen. Eine getrennte
+  Installation über HACS entfällt, Karte und Add-on sind immer versionsgleich
+- Dafür braucht das Add-on Schreibzugriff auf die Konfiguration (`map: homeassistant_config:rw`).
+  Fehlt er, wird die Karte übersprungen und das Add-on läuft normal weiter
+- **Umstieg von HACS:** Ist die Karte noch über HACS eingebunden, legt das Add-on bewusst
+  *keine* zweite Ressource an – zwei Registrierungen desselben Custom Elements würden das
+  Dashboard stören. Stattdessen steht ein Hinweis im Protokoll. Nach dem Entfernen der
+  HACS-Karte samt Ressource übernimmt das Add-on beim nächsten Start
+- Der Hash in der Ressourcen-URL stammt aus dem Dateiinhalt: Die Karte wird nur dann neu
+  eingetragen, wenn sie sich tatsächlich geändert hat
+- Kartenquelle liegt jetzt unter `urlaubsplaner/card/` – das bisherige Repository
+  `Melle79/HA-urlaubsplaner-card` (zuletzt v1.0.8) wird damit abgelöst
+
 ## 1.6.7
 
 - **Knopf „Jetzt synchronisieren"** bei den mitgeschalteten Entitäten: setzt alle
