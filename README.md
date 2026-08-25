@@ -13,8 +13,9 @@ Home Assistant Add-on-Repository mit dem **Urlaubsplaner**: Urlaubszeiträume be
 - Entitäten **`Urlaub heute`** und **`Urlaub morgen`** (ein/aus) plus **`Nächster Urlaub`** mit allen Details als Attribute
 - **Dashboard-Karte** ([Urlaubsplaner Card](https://github.com/Melle79/HA-urlaubsplaner-card)): Urlaube direkt im Lovelace-Dashboard eintragen, bearbeiten und löschen
 - Entitäten via **MQTT Discovery** (retained) mit Availability-Topic – die MQTT-Zugangsdaten holt sich das Add-on automatisch vom Supervisor
-- **Entitäten mitschalten**: beliebig viele bestehende Entitäten (z. B. `input_boolean.urlaub`) werden per Regel automatisch geschaltet – je Regel wählbar: Auslöser (Urlaub heute / Urlaub morgen) und Aktion (im Urlaub einschalten, ausschalten oder bei `input_select`/`select` eine Option setzen, z. B. Hausmodus „Urlaub“ und danach zurück auf „Zuhause“)
-- Zustände werden bei jeder Änderung sowie automatisch beim **Datumswechsel um Mitternacht** neu berechnet
+- **Entitäten mitschalten**: beliebig viele bestehende Entitäten (z. B. `input_boolean.urlaub`) werden per Regel automatisch geschaltet – je Regel wählbar: Auslöser (Urlaub heute / Urlaub morgen / Urlaub gerade vorbei) und Aktion (im Urlaub einschalten, ausschalten oder bei `input_select`/`select` eine Option setzen, z. B. Hausmodus „Urlaub“ und danach zurück auf „Zuhause“)
+- **Geschaltet wird nur beim Wechsel**: Das Add-on wacht zum Urlaubsbeginn und -ende, zum Datumswechsel und zur Benachrichtigungszeit auf, schreibt dabei aber nichts nach Home Assistant, solange sich nichts geändert hat – von Hand umgestellte Entitäten bleiben so stehen
+- **Mit oder ohne Uhrzeit**: Zeiträume können auf die Minute genau beginnen und enden (z. B. Abfahrt 12:00, Rückkehr 17:00); ohne Uhrzeit gilt der ganze Tag. Beide Varianten werden intern gleich behandelt und punktgenau geschaltet
 - Keine externe API, keine Cloud – alle Daten liegen lokal in `/data` des Add-ons
 
 ## Entitäten
@@ -26,7 +27,7 @@ Home Assistant Add-on-Repository mit dem **Urlaubsplaner**: Urlaubszeiträume be
 | Urlaub gerade vorbei | binary_sensor | `datum`, `bezeichnung`, `ende`, `vor_minuten` (ON für 60 Min. nach Urlaubsende) |
 | Nächster Urlaub | sensor | `bezeichnung`, `beginn`, `ende`, `in_tagen`, `dauer_tage`, `aktuell_urlaub`, `urlaube` (alle Zeiträume), `vorschau` (14-Tage-Streifen) |
 
-Entity-IDs: `binary_sensor.urlaub_heute`, `binary_sensor.urlaub_morgen`, `sensor.naechster_urlaub`.
+Entity-IDs: `binary_sensor.urlaub_heute`, `binary_sensor.urlaub_morgen`, `binary_sensor.urlaub_gerade_vorbei`, `sensor.naechster_urlaub`.
 
 State des Sensors „Nächster Urlaub": `Läuft` (Urlaub aktiv), das Beginn-Datum des nächsten Urlaubs (ISO) oder `Keiner geplant`.
 
