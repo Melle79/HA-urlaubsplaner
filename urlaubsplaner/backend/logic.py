@@ -4,6 +4,16 @@ from __future__ import annotations
 from datetime import date, datetime, time, timedelta
 
 
+# Wie lange nach Urlaubsende "urlaub_gerade_vorbei" auf ON bleibt
+JUST_ENDED_WINDOW = 60
+
+# Ohne eingegebene Uhrzeit gilt der ganze Tag. Intern wird daraus eine feste
+# Grenze, damit "mit Uhrzeit" und "ohne Uhrzeit" überall dieselbe Rechnung
+# durchlaufen und jeder Wechsel einen Weckzeitpunkt hat.
+DEFAULT_START_TIME = time(0, 0)
+DEFAULT_END_TIME = time(23, 59)
+
+
 def _fmt(d: date) -> str:
     return d.isoformat()
 
@@ -19,26 +29,31 @@ def _parse_time(t: str | None) -> time | None:
         return None
 
 
-def _is_active(u: dict, dt: datetime) -> bool:
-    """Prüft ob ein Zeitraum zum Zeitpunkt dt aktiv ist (inkl. Uhrzeiten)."""
+def _bounds(u: dict) -> tuple[datetime, datetime] | None:
+    """Beginn und Ende eines Zeitraums als Zeitpunkte.
+
+    Fehlt eine Uhrzeit, gilt der Tagesanfang bzw. das Tagesende. Damit ist ein
+    Zeitraum immer ein durchgehendes Intervall – unabhängig davon, ob Uhrzeiten
+    eingegeben wurden.
+    """
     try:
         start_d = date.fromisoformat(u["start"])
         end_d = date.fromisoformat(u["end"])
     except (KeyError, ValueError):
+        return None
+    start_t = _parse_time(u.get("start_time")) or DEFAULT_START_TIME
+    end_t = _parse_time(u.get("end_time")) or DEFAULT_END_TIME
+    return datetime.combine(start_d, start_t), datetime.combine(end_d, end_t)
+
+
+def _is_active(u: dict, dt: datetime) -> bool:
+    """Prüft ob ein Zeitraum zum Zeitpunkt dt aktiv ist (inkl. Uhrzeiten)."""
+    bounds = _bounds(u)
+    if bounds is None:
         return False
-    today = dt.date()
-    if not (start_d <= today <= end_d):
-        return False
-    now = dt.time().replace(second=0, microsecond=0)
-    start_t = _parse_time(u.get("start_time"))
-    end_t = _parse_time(u.get("end_time"))
-    # Erster Tag: frühestens ab start_time
-    if today == start_d and start_t and now < start_t:
-        return False
-    # Letzter Tag: spätestens bis end_time
-    if today == end_d and end_t and now >= end_t:
-        return False
-    return True
+    start_dt, end_dt = bounds
+    now = dt.replace(second=0, microsecond=0)
+    return start_dt <= now < end_dt
 
 
 def _period_for_dt(dt: datetime, urlaube: list[dict]) -> dict | None:
@@ -108,15 +123,14 @@ def _day_state(dt: datetime, urlaube: list[dict]) -> dict:
     return {"state": "ON" if period else "OFF", "attributes": attrs}
 
 
-def _just_ended(urlaube: list[dict], now: datetime, window_minutes: int = 60) -> dict | None:
+def _just_ended(urlaube: list[dict], now: datetime,
+                window_minutes: int = JUST_ENDED_WINDOW) -> dict | None:
     """Zeitraum liefern, der innerhalb der letzten `window_minutes` geendet hat."""
     for u in urlaube:
-        try:
-            end_d = date.fromisoformat(u["end"])
-        except (KeyError, ValueError):
+        bounds = _bounds(u)
+        if bounds is None:
             continue
-        end_t = _parse_time(u.get("end_time"))
-        end_dt = datetime.combine(end_d, end_t if end_t else time(23, 59))
+        _, end_dt = bounds
         if timedelta(0) <= (now - end_dt) <= timedelta(minutes=window_minutes):
             return u
     return None
@@ -181,30 +195,19 @@ def build_states(urlaube: list[dict]) -> dict:
 def next_wakeup(urlaube: list[dict]) -> datetime | None:
     """Nächsten relevanten Schaltzeitpunkt liefern (für den Scheduler).
 
-    Liefert den nächsten noch nicht erreichten start_time oder end_time
-    aus allen Zeiträumen, die heute oder morgen einen solchen haben.
+    Das ist der nächste Zeitpunkt, an dem sich einer der Zustände tatsächlich
+    ändert: Urlaubsbeginn, Urlaubsende oder das Ende des "gerade vorbei"-
+    Fensters. Zeiträume ohne eingegebene Uhrzeit zählen dabei mit ihren
+    Tagesgrenzen mit, damit auch sie punktgenau geschaltet werden.
     """
     now = datetime.now().replace(second=0, microsecond=0)
-    today = now.date()
     candidates: list[datetime] = []
     for u in urlaube:
-        try:
-            start_d = date.fromisoformat(u["start"])
-            end_d = date.fromisoformat(u["end"])
-        except (KeyError, ValueError):
+        bounds = _bounds(u)
+        if bounds is None:
             continue
-        # Start-Zeit: relevant wenn Starttag heute oder morgen
-        if u.get("start_time") and start_d >= today:
-            t = _parse_time(u["start_time"])
-            if t:
-                dt = datetime.combine(start_d, t)
-                if dt > now:
-                    candidates.append(dt)
-        # End-Zeit: >= now damit die Endzeit selbst als Weckpunkt gilt
-        if u.get("end_time") and end_d >= today:
-            t = _parse_time(u["end_time"])
-            if t:
-                dt = datetime.combine(end_d, t)
-                if dt >= now:  # >= statt >: Endzeit selbst ist Weckpunkt
-                    candidates.append(dt)
+        start_dt, end_dt = bounds
+        for dt in (start_dt, end_dt, end_dt + timedelta(minutes=JUST_ENDED_WINDOW)):
+            if dt >= now:  # >= : der Schaltzeitpunkt selbst ist ein Weckpunkt
+                candidates.append(dt)
     return min(candidates) if candidates else None

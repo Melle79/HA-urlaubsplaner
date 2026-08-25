@@ -48,11 +48,30 @@ def publish_now() -> None:
     _interrupt_scheduler()
 
 
-def _sync_helpers() -> None:
-    """Helfer-Regeln anwenden – wird NUR vom Scheduler aufgerufen.
+def _rule_signature(rule: dict, active: bool) -> str:
+    """Kennzeichnet, was diese Regel im aktuellen Zustand schalten würde.
 
-    Schaltet Entitäten basierend auf dem aktuellen Zustand der Entitäten:
-    aktiv → einschalten/Option setzen, inaktiv → ausschalten/zurücksetzen.
+    Enthält neben dem Urlaubszustand auch Aktion und Zielwert, damit eine
+    in der Web-UI geänderte Regel beim nächsten Takt greift und nicht erst
+    beim nächsten Urlaubswechsel.
+    """
+    action = rule.get("action", "ein")
+    target = ""
+    if action == "option":
+        target = str(rule.get("option_urlaub") if active else rule.get("option_normal") or "")
+    return f"{action}|{target}|{'ON' if active else 'OFF'}"
+
+
+def _sync_helpers(force: bool = False) -> None:
+    """Helfer-Regeln anwenden – wird vom Scheduler und von /api/sync aufgerufen.
+
+    Schaltet nur auf der *Flanke*: eine Regel wird erst dann in HA geschrieben,
+    wenn sich ihr Urlaubszustand (oder ihre Konfiguration) seit dem letzten Mal
+    geändert hat. Ohne das würde jeder Weckzeitpunkt – Mitternacht, Urlaubs-
+    Uhrzeiten, Benachrichtigungszeit – den Zielzustand erneut setzen und dabei
+    von Hand vorgenommene Änderungen überschreiben.
+
+    Mit `force=True` wird unabhängig von der Flanke geschaltet (manueller Sync).
     """
     helpers = store.load_helpers()
     if not helpers:
@@ -62,6 +81,8 @@ def _sync_helpers() -> None:
         return
     urlaube = store.load_urlaube()
     states = logic.build_states(urlaube)
+    previous = store.load_helper_states()
+    current: dict = {}
     for rule in helpers:
         key = ("urlaub_morgen" if rule.get("trigger") == "morgen"
                else "urlaub_gerade_vorbei" if rule.get("trigger") == "vorbei"
@@ -69,7 +90,17 @@ def _sync_helpers() -> None:
         active = states[key]["state"] == "ON"
         action = rule.get("action", "ein")
         entity = rule["entity"]
-        _LOGGER.info("Helfer-Sync: %s | %s=%s | Aktion=%s", entity, key, "ON" if active else "OFF", action)
+        rule_id = rule.get("id") or f"{entity}:{rule.get('trigger', 'heute')}"
+        signature = _rule_signature(rule, active)
+        current[rule_id] = signature
+
+        if not force and previous.get(rule_id) == signature:
+            _LOGGER.debug("Helfer %s | %s=%s – unverändert, kein Schaltbefehl",
+                          entity, key, "ON" if active else "OFF")
+            continue
+
+        _LOGGER.info("Helfer-Sync: %s | %s=%s | Aktion=%s%s", entity, key,
+                     "ON" if active else "OFF", action, " (erzwungen)" if force else "")
         if action == "ein":
             ha_api.set_onoff(entity, active)
         elif action == "aus":
@@ -80,6 +111,10 @@ def _sync_helpers() -> None:
                 ha_api.select_option(entity, target)
             else:
                 _LOGGER.info("Helfer %s – keine Option für diesen Zustand, übersprungen", entity)
+
+    # Nur die noch vorhandenen Regeln merken – gelöschte fallen dabei heraus
+    if current != previous:
+        store.save_helper_states(current)
 
 
 # ---------------------------------------------------------------- MQTT-Commands
@@ -260,7 +295,7 @@ def api_debug():
 def api_sync():
     """Helfer manuell synchronisieren (für Diagnosezwecke)."""
     _LOGGER.info("Manueller Sync via Web-UI ausgelöst")
-    _sync_helpers()
+    _sync_helpers(force=True)
     return jsonify({"ok": True})
 
 

@@ -165,6 +165,35 @@ def _save_settings_raw(settings: dict) -> None:
     os.replace(tmp, SETTINGS_FILE)
 
 
+HELPER_STATES_FILE = os.path.join(DATA_DIR, "helper_states.json")
+
+
+def load_helper_states() -> dict:
+    """Zuletzt geschaltete Signatur je Helfer-Regel laden ({regel_id: signatur}).
+
+    Dient der Flankenerkennung: nur wenn sich die Signatur ändert, wird
+    tatsächlich geschaltet. Persistent, damit ein Add-on-Neustart nicht
+    erneut in HA schreibt.
+    """
+    if not os.path.exists(HELPER_STATES_FILE):
+        return {}
+    try:
+        with open(HELPER_STATES_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_helper_states(states: dict) -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    tmp = HELPER_STATES_FILE + ".tmp"
+    with _lock:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(states, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, HELPER_STATES_FILE)
+
+
 def load_helpers() -> list[dict]:
     """Helfer-Regeln laden; alte Einzel-Einstellung (v1.1.0) wird migriert."""
     with _lock:

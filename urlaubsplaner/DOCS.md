@@ -41,11 +41,13 @@ Jede Regel besteht aus:
   automatisch aus Home Assistant geladen und als Dropdown angeboten („nicht zurücksetzen“
   lässt die Entität nach dem Urlaub unverändert)
 
-Geschaltet wird bei jeder Änderung, beim Add-on-Start und beim Datumswechsel um Mitternacht –
-und nur, wenn der Zustand tatsächlich abweicht. Hinweis: Solange eine Regel besteht, „gehört“
-die Entität dem Add-on – manuelles Umschalten wird bei der nächsten Synchronisierung wieder
-überschrieben. Eine bestehende Einzel-Einstellung aus v1.1.0 wird beim ersten Start automatisch
-als Regel übernommen.
+Geschaltet wird **nur beim Wechsel** – also wenn ein Urlaub beginnt oder endet, oder wenn die
+Regel selbst geändert wird. Das Add-on wacht zwar öfter auf (Mitternacht, eingetragene Uhrzeiten,
+Benachrichtigungszeit), schreibt dabei aber nichts nach Home Assistant, solange sich nichts
+geändert hat. Wer den Zustand zwischendurch von Hand umstellt, behält ihn deshalb bis zum
+nächsten echten Urlaubswechsel; „Jetzt synchronisieren“ in der Web-UI setzt ihn sofort zurück.
+Eine bestehende Einzel-Einstellung aus v1.1.0 wird beim ersten Start automatisch als Regel
+übernommen.
 
 ## Dashboard-Karte
 

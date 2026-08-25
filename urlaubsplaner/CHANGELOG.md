@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.6.6
+
+- **Helfer schalten nur noch bei echtem Wechsel**: Bisher hat jeder Weckzeitpunkt
+  – Mitternacht, Urlaubs-Uhrzeiten und die Benachrichtigungszeit – den Zielzustand
+  erneut gesetzt, auch wenn sich nichts geändert hatte. Damit wurden von Hand
+  vorgenommene Änderungen (z. B. am Hausmodus) zweimal täglich überschrieben.
+  Geschaltet wird jetzt nur noch auf der Flanke.
+- Der zuletzt geschaltete Zustand wird in `/data/helper_states.json` gemerkt,
+  damit auch ein Add-on-Neustart nicht erneut in HA schreibt
+- Wird eine Helfer-Regel in der Web-UI geändert, greift sie weiterhin beim
+  nächsten Takt – dafür geht die Konfiguration in die Flankenerkennung mit ein
+- "Jetzt synchronisieren" in der Web-UI schaltet unverändert immer
+- **Zeiträume mit und ohne Uhrzeit laufen intern durch dieselbe Rechnung**:
+  fehlt eine Uhrzeit, gelten 00:00 und 23:59 als Tagesgrenzen. Dadurch hat jeder
+  Zustandswechsel einen eigenen Weckzeitpunkt – auch das Ende des
+  "Urlaub gerade vorbei"-Fensters, das bisher bis zum nächsten Takt hängen blieb
+
 ## 1.6.5
 
 - **Anpassbare Benachrichtigungstexte**: Titel und Text für Vorlauf, Urlaubsbeginn
