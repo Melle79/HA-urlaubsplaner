@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#243244"/><stop offset="1" stop-color="#141b25"/>
+    </linearGradient>
+    <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0c07a"/><stop offset="1" stop-color="#d99f52"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- Stange -->
+  <rect x="247" y="196" width="17" height="210" rx="8" fill="#c9d3de"/>
+  <!-- Schirmdach, abwechselnde Segmente -->
+  <path d="M60 208 A196 196 0 0 1 452 208 Z" fill="#e8734a"/>
+  <path d="M256 12 A196 196 0 0 1 452 208 L256 208 Z" fill="#f4f7fa" opacity=".92"/>
+  <path d="M256 12 A196 196 0 0 1 354 38 L256 208 Z" fill="#e8734a"/>
+  <path d="M60 208 A196 196 0 0 1 158 38 L256 208 Z" fill="#f4f7fa" opacity=".92"/>
+  <circle cx="256" cy="208" r="15" fill="#c9d3de"/>
+  <!-- Sand und Wasserlinie -->
+  <path d="M0 406 Q128 380 256 406 T512 406 L512 512 L0 512 Z" fill="url(#sand)"/>
+  <path d="M0 434 Q96 414 192 434 T384 434 T576 434" stroke="#6fc9e8" stroke-width="15"
+        fill="none" stroke-linecap="round" opacity=".55"/>
+</svg>

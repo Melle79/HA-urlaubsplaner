@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.1
+
+- **Eigenes Icon und Logo** für den Add-on-Store (`icon.png`, `logo.png`) – bisher stand dort
+  nur der Platzhalter. Motiv ist ein Sonnenschirm in der Farbwelt der Web-UI
+- Die Vorlagen liegen als SVG unter `images/` und lassen sich dort weiterbearbeiten
+
 ## 1.7.0
 
 - **Die Dashboard-Karte ist jetzt im Add-on enthalten.** Beim Start wird

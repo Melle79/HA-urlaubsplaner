@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 400">
+  <defs>
+    <linearGradient id="lbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#243244"/><stop offset="1" stop-color="#141b25"/>
+    </linearGradient>
+    <linearGradient id="lsand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#d99f52" stop-opacity="0"/>
+      <stop offset=".25" stop-color="#e8b268"/>
+      <stop offset=".75" stop-color="#e8b268"/>
+      <stop offset="1" stop-color="#d99f52" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1000" height="400" rx="48" fill="url(#lbg)"/>
+  <!-- Schirm -->
+  <g transform="translate(74 62) scale(0.52)">
+    <rect x="247" y="196" width="17" height="232" rx="8" fill="#c9d3de"/>
+    <path d="M60 208 A196 196 0 0 1 452 208 Z" fill="#e8734a"/>
+    <path d="M256 12 A196 196 0 0 1 452 208 L256 208 Z" fill="#f4f7fa" opacity=".92"/>
+    <path d="M256 12 A196 196 0 0 1 354 38 L256 208 Z" fill="#e8734a"/>
+    <path d="M60 208 A196 196 0 0 1 158 38 L256 208 Z" fill="#f4f7fa" opacity=".92"/>
+    <circle cx="256" cy="208" r="15" fill="#c9d3de"/>
+  </g>
+  <!-- Sandlinie, an beiden Enden auslaufend -->
+  <path d="M74 288 Q186 276 298 288 T522 288" stroke="url(#lsand)" stroke-width="16"
+        fill="none" stroke-linecap="round"/>
+  <text x="392" y="186" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="78" font-weight="600" fill="#f4f7fa">Urlaubsplaner</text>
+  <text x="394" y="242" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
+        font-size="34" fill="#8b98a5">Urlaube planen, HA schaltet mit</text>
+</svg>
