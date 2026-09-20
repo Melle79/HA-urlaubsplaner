@@ -10,7 +10,6 @@
       <stop offset="1" stop-color="#d99f52" stop-opacity="0"/>
     </linearGradient>
   </defs>
-  <rect width="1000" height="400" rx="48" fill="url(#lbg)"/>
   <!-- Schirm -->
   <g transform="translate(74 62) scale(0.52)">
     <rect x="247" y="196" width="17" height="232" rx="8" fill="#c9d3de"/>
@@ -24,7 +23,7 @@
   <path d="M74 288 Q186 276 298 288 T522 288" stroke="url(#lsand)" stroke-width="16"
         fill="none" stroke-linecap="round"/>
   <text x="392" y="186" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-        font-size="78" font-weight="600" fill="#f4f7fa">Urlaubsplaner</text>
+        font-size="78" font-weight="600" fill="#1b2430">Urlaubsplaner</text>
   <text x="394" y="242" font-family="Helvetica Neue, Helvetica, Arial, sans-serif"
-        font-size="34" fill="#8b98a5">Urlaube planen, HA schaltet mit</text>
+        font-size="34" fill="#5c6470">Urlaube planen, HA schaltet mit</text>
 </svg>
